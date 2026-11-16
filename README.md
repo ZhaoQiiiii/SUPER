@@ -108,7 +108,7 @@ sudo ln -s /usr/include/eigen3/Eigen /usr/include/Eigen
 # dw for backward cpp
 sudo apt-get install libdw-dev
 # for ROS dependency
-sudo apt-get install ros-${YOUR-ROS-VERSION}-mavros* ros-${YOUR-ROS-VERSION}-pcl* ros-${YOUR-ROS-VERSION}-rosfmt
+sudo apt-get install ros-${YOUR-ROS-VERSION}-mavros* ros-${YOUR-ROS-VERSION}-pcl*
 ```
 
 Before building the code, select the appropriate ROS version:
@@ -133,6 +133,23 @@ Currently, **ROS1 Noetic** serves as the **Tier 1** supported platform for SUPER
 * ...
 
 ## 2.2  ROS1 (Noetic) Installation
+
+ZeroAgent 集成说明：本仓库已将 SUPER 代码放在 `src/SUPER`（自包含 catkin 工作区），无需单独 clone。
+
+```bash
+# 在 ZeroAgent 仓库根目录
+bash scripts/build.sh super
+```
+
+运行自带 demo：
+
+```bash
+source /workspace/ZeroAgent/src/SUPER/devel/setup.bash
+roslaunch mission_planner benchmark_high_speed.launch
+```
+
+上游独立安装方式（保留供参考）：
+
 ```bash
 mkdir -p super_ws/src && cd super_ws/src
 git clone https://github.com/hku-mars/SUPER.git

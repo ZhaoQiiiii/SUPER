@@ -1,6 +1,6 @@
 #############| For UAV simulation |#################################
 pcd_name: "random_map_24_6635.pcd"
-mesh_resource: "package://perfect_drone_sim/meshes/yunque-M.dae"
+mesh_resource: "package://perfect_drone_sim/meshes/fake_drone.dae"
 init_position:
   x: 0
   y: -50

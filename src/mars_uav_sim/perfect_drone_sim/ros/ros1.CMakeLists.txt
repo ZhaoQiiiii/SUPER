@@ -16,7 +16,6 @@ find_package(catkin REQUIRED COMPONENTS
         message_generation
         quadrotor_msgs
         visualization_msgs
-        rosfmt
         message_filters
         marsim_render
         )

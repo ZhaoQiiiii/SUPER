@@ -12,8 +12,8 @@ generate_standard_ros_package() {
   local ros_version="$2"
 
   # Auto-generate paths
-  local template_dir="$SCRIPT_DIR/../${package_name}/ros"
-  local root_dir="$SCRIPT_DIR/../${package_name}"
+  local template_dir="$SCRIPT_DIR/../src/${package_name}/ros"
+  local root_dir="$SCRIPT_DIR/../src/${package_name}"
 
   # Validate parameters
   if [[ $# -ne 2 ]]; then
