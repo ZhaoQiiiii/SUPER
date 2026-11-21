@@ -216,11 +216,11 @@ namespace perfect_drone {
             meshROS.scale.y = 1;
             meshROS.scale.z = 1;
             meshROS.mesh_resource = mesh_resource_;
-            meshROS.mesh_use_embedded_materials = true;
+            meshROS.mesh_use_embedded_materials = false;
             meshROS.color.a = 1.0;
-            meshROS.color.r = 1.0;
-            meshROS.color.g = 1.0;
-            meshROS.color.b = 1.0;
+            meshROS.color.r = 0.0;
+            meshROS.color.g = 0.0;
+            meshROS.color.b = 0.0;
             robot_pub_.publish(meshROS);
             static int slow_down = 0;
             if (slow_down++ % 10 == 0) {
