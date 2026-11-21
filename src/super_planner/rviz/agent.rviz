@@ -5,7 +5,6 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /ZeroAgent1
-        - /ZeroAgent1/Sensors1/odom1/Shape1
         - /ZeroAgent1/Simulation1/robot_path1
       Splitter Ratio: 0.5011876225471497
     Tree Height: 535
@@ -115,66 +114,6 @@ Visualization Manager:
               Topic: /lidar_slam/odom
               Unreliable: false
               Value: false
-            - Alpha: 1
-              Autocompute Intensity Bounds: true
-              Autocompute Value Bounds:
-                Max Value: -9999
-                Min Value: 9999
-                Value: true
-              Axis: Z
-              Channel Name: z
-              Class: rviz/PointCloud2
-              Color: 255; 255; 255
-              Color Transformer: AxisColor
-              Decay Time: 0
-              Enabled: false
-              Invert Rainbow: false
-              Max Color: 255; 255; 255
-              Min Color: 0; 0; 0
-              Name: cloud_registered
-              Position Transformer: XYZ
-              Queue Size: 2
-              Selectable: true
-              Size (Pixels): 3
-              Size (m): 0.019999999552965164
-              Style: Flat Squares
-              Topic: /cloud_registered
-              Unreliable: false
-              Use Fixed Frame: true
-              Use rainbow: true
-              Value: false
-            - Alpha: 1
-              Autocompute Intensity Bounds: true
-              Autocompute Value Bounds:
-                Max Value: 5.922972679138184
-                Min Value: -1.341639518737793
-                Value: true
-              Axis: Z
-              Channel Name: z
-              Class: rviz/PointCloud2
-              Color: 255; 255; 255
-              Color Transformer: AxisColor
-              Decay Time: 0
-              Enabled: false
-              Invert Rainbow: false
-              Max Color: 255; 255; 255
-              Min Color: 0; 0; 0
-              Name: global_points
-              Position Transformer: XYZ
-              Queue Size: 2
-              Selectable: true
-              Size (Pixels): 3
-              Size (m): 0.019999999552965164
-              Style: Flat Squares
-              Topic: /global_points
-              Unreliable: false
-              Use Fixed Frame: true
-              Use rainbow: true
-              Value: false
-          Enabled: true
-          Name: Sensors
-        - Class: rviz/Group
-          Displays:
             - Class: rviz/Image
               Enabled: true
               Image Topic: /camera0_gsplat/image/rgb
@@ -198,34 +137,6 @@ Visualization Manager:
               Queue Size: 2
               Transport Hint: raw
               Unreliable: false
-              Value: false
-            - Alpha: 1
-              Autocompute Intensity Bounds: true
-              Autocompute Value Bounds:
-                Max Value: 5.004212856292725
-                Min Value: -1.0900059938430786
-                Value: true
-              Axis: Z
-              Channel Name: z
-              Class: rviz/PointCloud2
-              Color: 255; 255; 255
-              Color Transformer: AxisColor
-              Decay Time: 0
-              Enabled: false
-              Invert Rainbow: false
-              Max Color: 255; 255; 255
-              Min Color: 0; 0; 0
-              Name: lidar_points
-              Position Transformer: XYZ
-              Queue Size: 2
-              Selectable: true
-              Size (Pixels): 3
-              Size (m): 0.019999999552965164
-              Style: Flat Squares
-              Topic: /mid360/points
-              Unreliable: false
-              Use Fixed Frame: true
-              Use rainbow: true
               Value: false
             - Class: rviz/Image
               Enabled: false
@@ -251,6 +162,62 @@ Visualization Manager:
               Transport Hint: raw
               Unreliable: false
               Value: false
+            - Alpha: 1
+              Autocompute Intensity Bounds: true
+              Autocompute Value Bounds:
+                Max Value: 4.689005374908447
+                Min Value: -1.220266342163086
+                Value: true
+              Axis: Z
+              Channel Name: z
+              Class: rviz/PointCloud2
+              Color: 255; 255; 255
+              Color Transformer: AxisColor
+              Decay Time: 0
+              Enabled: false
+              Invert Rainbow: false
+              Max Color: 255; 255; 255
+              Min Color: 0; 0; 0
+              Name: global_pc
+              Position Transformer: XYZ
+              Queue Size: 2
+              Selectable: true
+              Size (Pixels): 3
+              Size (m): 0.019999999552965164
+              Style: Flat Squares
+              Topic: /global_pc
+              Unreliable: false
+              Use Fixed Frame: true
+              Use rainbow: true
+              Value: false
+            - Alpha: 1
+              Autocompute Intensity Bounds: true
+              Autocompute Value Bounds:
+                Max Value: 4.406211853027344
+                Min Value: 0.896332859992981
+                Value: true
+              Axis: Z
+              Channel Name: z
+              Class: rviz/PointCloud2
+              Color: 255; 255; 255
+              Color Transformer: AxisColor
+              Decay Time: 0
+              Enabled: false
+              Invert Rainbow: false
+              Max Color: 255; 255; 255
+              Min Color: 0; 0; 0
+              Name: cloud_registered
+              Position Transformer: XYZ
+              Queue Size: 2
+              Selectable: true
+              Size (Pixels): 3
+              Size (m): 0.019999999552965164
+              Style: Flat Squares
+              Topic: /cloud_registered
+              Unreliable: false
+              Use Fixed Frame: true
+              Use rainbow: true
+              Value: false
           Enabled: true
           Name: Perception
         - Class: rviz/Group
@@ -267,7 +234,7 @@ Visualization Manager:
               Color: 186; 189; 182
               Color Transformer: AxisColor
               Decay Time: 0
-              Enabled: true
+              Enabled: false
               Invert Rainbow: false
               Max Color: 255; 255; 255
               Min Color: 0; 0; 0
@@ -282,7 +249,7 @@ Visualization Manager:
               Unreliable: false
               Use Fixed Frame: true
               Use rainbow: true
-              Value: true
+              Value: false
             - Alpha: 1
               Autocompute Intensity Bounds: true
               Autocompute Value Bounds:
@@ -588,7 +555,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/XYOrbit
-      Distance: 29.675201416015625
+      Distance: 25.66850471496582
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -604,9 +571,9 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.714797854423523
+      Pitch: 0.7547979950904846
       Target Frame: <Fixed Frame>
-      Yaw: 3.3654396533966064
+      Yaw: 3.49543833732605
     Saved:
       - Class: rviz/XYOrbit
         Distance: 15.792802810668945
