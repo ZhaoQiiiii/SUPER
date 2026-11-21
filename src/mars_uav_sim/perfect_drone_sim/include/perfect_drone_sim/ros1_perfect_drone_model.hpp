@@ -34,7 +34,7 @@ namespace perfect_drone {
         Config cfg_;
 
     public:
-        PerfectDrone(const ros::NodeHandle &n) : nh_(n) {
+        PerfectDrone(const ros::NodeHandle &n) : nh_(n), t_start_sec_(ros::Time::now().toSec()) {
 #define CONFIG_FILE_DIR(name) (string(string(ROOT_DIR) + "config/"+name))
             std::string dft_cfg_path = CONFIG_FILE_DIR("click.yaml");
             std::string cfg_path, cfg_name;
@@ -44,8 +44,10 @@ namespace perfect_drone {
                 cfg_path = CONFIG_FILE_DIR(cfg_name);
                 cout << " -- [Fsm-Test] Load config by file name: " << cfg_name << endl;
             }
+            std::string pcd_path;
+            nh_.param("pcd_path", pcd_path, std::string(""));
             cfg_ = Config(cfg_path);
-            render_ptr_ = std::make_shared<marsim::MarsimRender>(cfg_path);
+            render_ptr_ = std::make_shared<marsim::MarsimRender>(cfg_path, pcd_path);
             cmd_sub_ = nh_.subscribe("/planning/pos_cmd", 100, &PerfectDrone::cmdCallback, this);
             odom_pub_ = nh_.advertise<nav_msgs::Odometry>("/lidar_slam/odom", 100);
             pose_pub_ = nh_.advertise<geometry_msgs::PoseStamped>("/lidar_slam/pose", 100);
@@ -118,9 +120,13 @@ namespace perfect_drone {
 
 
         void publishPC() {
+            if (!render_ptr_->isReady()) {
+                ROS_WARN_ONCE("[perfect_drone] No PCD loaded; point cloud publishing disabled.");
+                return;
+            }
             pcl::PointCloud<marsim::PointType>::Ptr local_map(new pcl::PointCloud<marsim::PointType>);
-            render_ptr_->renderOnceInWorld(position_.cast<float>(), q_.cast<float>(), ros::Time::now().toSec(),
-                                           local_map);
+            render_ptr_->renderOnceInWorld(position_.cast<float>(), q_.cast<float>(),
+                                           ros::Time::now().toSec() - t_start_sec_, local_map);
             sensor_msgs::PointCloud2 pc_msg;
             pcl::toROSMsg(*local_map, pc_msg);
             pc_msg.header.frame_id = "world";
@@ -135,6 +141,7 @@ namespace perfect_drone {
         nav_msgs::Path path_;
         visualization_msgs::Marker traj_marker_;
         Vec3 last_traj_pos_;
+        double t_start_sec_;
         ros::Subscriber cmd_sub_;
         ros::Publisher odom_pub_, robot_pub_, pose_pub_, path_pub_, global_pc_pub_, local_pc_pub_, vel_pub_,
                 traj_vis_pub_;
@@ -158,6 +165,9 @@ namespace perfect_drone {
 
 
         void publishGlobalPC(const ros::TimerEvent &e) {
+            if (!render_ptr_->isReady()) {
+                return;
+            }
             static int last_sub_num = 0;
             // update sub num
             int sub_num = global_pc_pub_.getNumSubscribers();

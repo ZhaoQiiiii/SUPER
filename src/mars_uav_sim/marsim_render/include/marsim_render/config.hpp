@@ -54,8 +54,13 @@ namespace marsim {
             loader.LoadParam("sensing_horizon", sensing_horizon, 10.0f, true);
             loader.LoadParam("sensing_rate", sensing_rate, 10, true);
             loader.LoadParam("lidar_type", lidar_type, 0, true);
+            loader.LoadParam("pcd_path", pcd_path, std::string{}, false);
             loader.LoadParam("pcd_name", pcd_name, std::string{}, false);
-            pcd_name = PCD_FILE_DIR(pcd_name);
+            if (!pcd_path.empty()) {
+                pcd_name = pcd_path;
+            } else if (!pcd_name.empty()) {
+                pcd_name = PCD_FILE_DIR(pcd_name);
+            }
             loader.LoadParam("is_360lidar", is_360lidar, true, false);
             loader.LoadParam("polar_resolution", polar_resolution, 0.1f, false);
             loader.LoadParam("fx", fx, 250.0f, false);
@@ -91,6 +96,7 @@ namespace marsim {
         int sensing_rate = 10;
         int lidar_type = LiDARType::UNDEFINED;
         std::string pcd_name{};
+        std::string pcd_path{};
 
         int width = 350;
         int height = 350;

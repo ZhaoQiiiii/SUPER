@@ -97,8 +97,11 @@ namespace marsim {
     public:
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-        explicit MarsimRender(const std::string& cfg_path_) {
+        explicit MarsimRender(const std::string& cfg_path_, const std::string& pcd_override = "") {
             cfg_ = Config(cfg_path_);
+            if (!pcd_override.empty()) {
+                cfg_.pcd_name = pcd_override;
+            }
             uniform_01 = std::uniform_real_distribution<decimal_t>(0, 1);
             eng = std::default_random_engine(419);
 
@@ -135,16 +138,18 @@ namespace marsim {
             global_map = cloud_color_mesh.makeShared();
         }
 
+        bool isReady() const { return render_ready_; }
+
         void renderOnceInWorld(const Eigen::Vector3f& camera_pos,
                                const Eigen::Quaternionf& camera_q,
-                               const decimal_t& t_pattern_start,
+                               const double& t_pattern_start,
                                pcl::PointCloud<PointType>::Ptr output_pointcloud) {
             render_pointcloud(camera_pos, camera_q, t_pattern_start, output_pointcloud);
         }
 
         void renderOnceInBody(const Eigen::Vector3f& camera_pos,
                                const Eigen::Quaternionf& camera_q,
-                               const decimal_t& t_pattern_start,
+                               const double& t_pattern_start,
                                pcl::PointCloud<PointType>::Ptr point_in_sensor) {
             pcl::PointCloud<PointType>::Ptr local_map(new pcl::PointCloud<PointType>);
             render_pointcloud(camera_pos, camera_q, t_pattern_start, local_map);
@@ -166,6 +171,7 @@ namespace marsim {
 
 
     private:
+        bool render_ready_{false};
         glm::mat4 projection{}, view{};
         unsigned int VBO{}, VAO{}, EBO{};
         GLFWwindow* window{};
@@ -191,7 +197,7 @@ namespace marsim {
 
         void render_pointcloud(const Eigen::Vector3f& camera_pos,
                                const Eigen::Quaternionf& camera_q,
-                               const decimal_t& t_pattern_start,
+                               const double& t_pattern_start,
                                pcl::PointCloud<PointType>::Ptr output_pointcloud);
 
         void input_dyn_clouds(pcl::PointCloud<pcl::PointXYZI> input_cloud);

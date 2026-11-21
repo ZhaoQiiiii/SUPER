@@ -1,4 +1,6 @@
 #include <utility>
+#include <sys/stat.h>
+#include <cmath>
 
 #include "marsim_render/marsim_render.hpp"
 
@@ -96,6 +98,12 @@ namespace marsim {
         // std::cout << "You Pushed a button, now open file: " << a_string.Get() << endl;
         load_pcd_file(map_filename, cloud_color_mesh);
 
+        if (cloud_color_mesh.empty()) {
+            std::cerr << "[MARSIM] No points loaded from PCD: " << map_filename << std::endl;
+            return;
+        }
+        render_ready_ = true;
+
         //downsample pointcloud
         // pcl::VoxelGrid<PointType> voxel_grid;
         // voxel_grid.setInputCloud(cloud_color_mesh.makeShared());
@@ -159,9 +167,8 @@ namespace marsim {
                 glDeleteBuffers(1, &VBO);
                 VBO = 0; // 防止重复删除
             }
+            glDeleteBuffers(1, &EBO); // 在适当的地方释放
         }
-
-        glDeleteBuffers(1, &EBO); // 在适当的地方释放
 
         // 终止 GLFW
         glfwTerminate();
@@ -171,7 +178,7 @@ namespace marsim {
     void MarsimRender::render_pointcloud(
         const Eigen::Vector3f& camera_pos,
         const Eigen::Quaternionf& camera_q,
-        const decimal_t& t_pattern_start,
+        const double& t_pattern_start,
         pcl::PointCloud<PointType>::Ptr output_pointcloud
     ) {
         ScopeTimer timer("TOTAL", cfg_.print_time_consumption);
@@ -187,8 +194,8 @@ namespace marsim {
                 // decimal_t point_duration = 0.000025;
                 decimal_t point_duration = 0.000004167 * 6;
 
-                decimal_t t_duration = 1.0 / cfg_.sensing_rate;
-                decimal_t t_start = t_pattern_start;
+                double t_duration = 1.0 / cfg_.sensing_rate;
+                double t_start = t_pattern_start;
 
                 decimal_t scale_x = 0.48 * cfg_.width / 2.0;
                 decimal_t scale_y = 0.43 * cfg_.height / 2.0;
@@ -196,7 +203,7 @@ namespace marsim {
                 int linestep = ceil(1.4 / 0.2);
                 // std::cout << "linestep = " << linestep << std::endl;
 
-                for (decimal_t t_i = t_start; t_i < t_start + t_duration; t_i = t_i + point_duration) {
+                for (double t_i = t_start; t_i < t_start + t_duration; t_i = t_i + point_duration) {
                     int x = round(scale_x * (cos(w1 * t_i) + cos(w2 * t_i))) + round(0.5 * cfg_.width);
                     int y = round(scale_y * (sin(w1 * t_i) + sin(w2 * t_i))) + round(0.5 * cfg_.height);
 
@@ -236,18 +243,24 @@ namespace marsim {
             }
             else if (cfg_.lidar_type == MID_360) {
                 pattern_matrix.setConstant(0);
-                decimal_t point_duration = 1.0 / 200000.0;
+                double point_duration = 1.0 / 200000.0;
 
-                decimal_t t_duration = 1.0 / cfg_.sensing_rate;
-                decimal_t t_start = t_pattern_start;
+                double t_duration = 1.0 / cfg_.sensing_rate;
+                double t_start = t_pattern_start;
 
                 //        decimal_t scale_x = 0.48 * cfg_.width / 2.0;
                 //        decimal_t scale_y = 0.43 * cfg_.height / 2.0;
                 decimal_t PI = 3.141519265357;
 
-                for (decimal_t t_i = t_start; t_i < t_start + t_duration; t_i = t_i + point_duration) {
-                    int x = (int(-round(-62050.63 * t_i + 3.11 * cos(314159.2 * t_i) * sin(628.318 * 2 * t_i))) % 360) /
-                        cfg_.polar_resolution;
+                for (double t_i = t_start; t_i < t_start + t_duration; t_i = t_i + point_duration) {
+                    /* 角度先按 360° 取模再换算成像素：直接对绝对时间算出的相位做 int 转换会溢出。 */
+                    const double phase = -62050.63 * t_i + 3.11 * std::cos(314159.2 * t_i) *
+                        std::sin(628.318 * 2 * t_i);
+                    double azimuth = std::fmod(-std::round(phase), 360.0);
+                    if (azimuth < 0) {
+                        azimuth += 360.0;
+                    }
+                    int x = static_cast<int>(azimuth / cfg_.polar_resolution);
                     int y = round(
                             25.5 * cos(20 * PI * t_i) + 4 * cos(2 * PI / 0.006 * t_i) * cos(10000 * PI * t_i) + 22.5) /
                         cfg_.polar_resolution + round(0.5 * cfg_.height);
@@ -399,6 +412,11 @@ namespace marsim {
     }
 
     void MarsimRender::load_pcd_file(std::string file_name, pcl::PointCloud<PointType>& cloud_color_mesh) {
+        struct stat info{};
+        if (::stat(file_name.c_str(), &info) != 0 || !S_ISREG(info.st_mode)) {
+            std::cerr << "[MARSIM] PCD path is not a regular file: " << file_name << std::endl;
+            return;
+        }
         int status = pcl::io::loadPCDFile<PointType>(file_name, cloud_color_mesh);
         if (status == -1) {
             cout << "can't read file." << endl;
