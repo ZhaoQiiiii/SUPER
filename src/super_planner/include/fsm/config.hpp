@@ -50,6 +50,10 @@ namespace fsm {
         string cmd_topic, mpc_cmd_topic, click_goal_topic;
         double yaw_dot_max{};
 
+        // FOV visualization
+        bool fov_vis_en{true};
+        double fov_top_angle{}, fov_left_angle{}, fov_right_angle{}, fov_vis_dist{};
+
         Config() = default;
 
         Config(const std::string & cfg_path) {
@@ -63,6 +67,11 @@ namespace fsm {
             loader.LoadParam("fsm/cmd_topic", cmd_topic, string("/planning/pos_cmd"));
             loader.LoadParam("fsm/mpc_cmd_topic", mpc_cmd_topic, string("/planning_cmd/mpc"));
             loader.LoadParam("fsm/click_goal_topic", click_goal_topic, string("/planning/click_goal_topic"));
+            loader.LoadParam("fsm/fov_vis_en", fov_vis_en, true);
+            loader.LoadParam("fsm/fov_top_angle", fov_top_angle, 0.6);
+            loader.LoadParam("fsm/fov_left_angle", fov_left_angle, 0.76);
+            loader.LoadParam("fsm/fov_right_angle", fov_right_angle, 0.76);
+            loader.LoadParam("fsm/fov_vis_dist", fov_vis_dist, 1.0);
 
 
             loader.LoadParam("super_planner/yaw_dot_max", yaw_dot_max, 1.0, true);

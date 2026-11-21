@@ -23,6 +23,9 @@ namespace perfect_drone {
         Eigen::Vector3d init_pos;
         double init_yaw;
         double sensing_rate;
+        double traj_min_speed;
+        double traj_max_speed;
+        double traj_distance_threshold;
 
         Config() = default;
 
@@ -35,6 +38,9 @@ namespace perfect_drone {
             loader.LoadParam("init_position/z", init_pos.z(), 1.5);
             loader.LoadParam("init_yaw", init_yaw, 0.0);
             loader.LoadParam("sensing_rate", sensing_rate, 10.0);
+            loader.LoadParam("traj_with_vel/min_speed", traj_min_speed, 0.0);
+            loader.LoadParam("traj_with_vel/max_speed", traj_max_speed, 2.0);
+            loader.LoadParam("traj_with_vel/distance_threshold", traj_distance_threshold, 0.1);
         }
     };
 }

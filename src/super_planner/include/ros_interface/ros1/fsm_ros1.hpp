@@ -35,13 +35,15 @@
 #include "nav_msgs/Odometry.h"
 #include "quadrotor_msgs/PositionCommand.h"
 #include "quadrotor_msgs/PolynomialTrajectory.h"
+#include "visualization_msgs/Marker.h"
+#include <cmath>
 
 
 namespace fsm {
     class FsmRos1 : public Fsm {
         ros::NodeHandle nh_;
         ros::Subscriber goal_sub_;
-        ros::Publisher cmd_pub, mpc_cmd_pub_, path_pub_;
+        ros::Publisher cmd_pub, mpc_cmd_pub_, path_pub_, fov_pub_;
         ros::Timer execution_timer_, replan_timer_, cmd_timer_;
         quadrotor_msgs::PositionCommand pid_cmd_;
         rog_map::ROGMapROS::Ptr map_ptr_;
@@ -281,6 +283,7 @@ namespace fsm {
             cmd_pub = nh_.advertise<quadrotor_msgs::PositionCommand>(cfg_.cmd_topic, 10);
             mpc_cmd_pub_ = nh_.advertise<quadrotor_msgs::PolynomialTrajectory>(cfg_.mpc_cmd_topic, 10);
             path_pub_ = nh_.advertise<nav_msgs::Path>("fsm/path", 100);
+            fov_pub_ = nh_.advertise<visualization_msgs::Marker>("visualization/fov", 10);
 
             int cmd_cnt = 0;
 
@@ -351,8 +354,63 @@ namespace fsm {
             callReplanOnce();
         }
 
+        void publishFovMarker() {
+            if (!cfg_.fov_vis_en || !robot_state_.rcv || fov_pub_.getNumSubscribers() < 1) {
+                return;
+            }
+            const Vec3f &p = robot_state_.p;
+            const double cy = std::cos(robot_state_.yaw);
+            const double sy = std::sin(robot_state_.yaw);
+            const double d = cfg_.fov_vis_dist;
+            const double hl = d * std::tan(cfg_.fov_left_angle);
+            const double hr = d * std::tan(cfg_.fov_right_angle);
+            const double vt = d * std::tan(cfg_.fov_top_angle);
+
+            /* Body frame: x forward, y left, z up. */
+            const Vec3f corners[4] = {
+                    Vec3f(d, hl, vt), Vec3f(d, hl, -vt), Vec3f(d, -hr, vt), Vec3f(d, -hr, -vt)
+            };
+            Vec3f world[4];
+            for (int i = 0; i < 4; ++i) {
+                world[i] = Vec3f(cy * corners[i].x() - sy * corners[i].y() + p.x(),
+                                 sy * corners[i].x() + cy * corners[i].y() + p.y(),
+                                 corners[i].z() + p.z());
+            }
+
+            visualization_msgs::Marker mk;
+            mk.header.frame_id = "world";
+            mk.header.stamp = ros::Time::now();
+            mk.ns = "fov";
+            mk.id = 0;
+            mk.type = visualization_msgs::Marker::LINE_LIST;
+            mk.action = visualization_msgs::Marker::ADD;
+            mk.pose.orientation.w = 1.0;
+            mk.scale.x = mk.scale.y = mk.scale.z = 0.04;
+            mk.color.r = 1.0;
+            mk.color.g = 0.0;
+            mk.color.b = 0.0;
+            mk.color.a = 1.0;
+
+            /* 4 rays from the origin plus the 4 far-plane edges. */
+            const int segments[8][2] = {{-1, 0}, {-1, 1}, {-1, 2}, {-1, 3},
+                                        {0, 2}, {2, 3}, {3, 1}, {1, 0}};
+            mk.points.resize(8 * 2);
+            for (int s = 0; s < 8; ++s) {
+                for (int k = 0; k < 2; ++k) {
+                    const int idx = segments[s][k];
+                    const Vec3f v = idx < 0 ? p : world[idx];
+                    geometry_msgs::Point &pt = mk.points[s * 2 + k];
+                    pt.x = v.x();
+                    pt.y = v.y();
+                    pt.z = v.z();
+                }
+            }
+            fov_pub_.publish(mk);
+        }
+
         void mainFsmTimerCallback(const ros::TimerEvent &event) {
             callMainFsmOnce();
+            publishFovMarker();
         }
 
     };

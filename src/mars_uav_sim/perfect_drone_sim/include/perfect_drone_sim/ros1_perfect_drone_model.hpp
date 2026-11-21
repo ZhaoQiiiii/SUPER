@@ -9,6 +9,8 @@
 #include "nav_msgs/Odometry.h"
 #include "tf2_ros/transform_broadcaster.h"
 #include "string"
+#include <algorithm>
+#include <cmath>
 #include "Eigen/Dense"
 #include "nav_msgs/Path.h"
 #include <sensor_msgs/PointCloud2.h>
@@ -52,6 +54,7 @@ namespace perfect_drone {
             local_pc_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("/cloud_registered", 100);
             global_pc_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("/global_pc", 100);
             vel_pub_ = nh_.advertise<visualization_msgs::Marker>("vel_text", 100);
+            traj_vis_pub_ = nh_.advertise<visualization_msgs::Marker>("traj_with_vel", 100);
 
             position_ = cfg_.init_pos;
             velocity_.setZero();
@@ -65,6 +68,15 @@ namespace perfect_drone {
             path_.poses.clear();
             path_.header.frame_id = "world";
             path_.header.stamp = ros::Time::now();
+
+            traj_marker_.header.frame_id = "world";
+            traj_marker_.ns = "trajectory";
+            traj_marker_.id = 0;
+            traj_marker_.type = visualization_msgs::Marker::LINE_STRIP;
+            traj_marker_.action = visualization_msgs::Marker::ADD;
+            traj_marker_.pose.orientation.w = 1.0;
+            traj_marker_.scale.x = 0.05;
+            last_traj_pos_ = cfg_.init_pos;
         }
 
         double getSensingRate() {
@@ -121,8 +133,11 @@ namespace perfect_drone {
 
     private:
         nav_msgs::Path path_;
+        visualization_msgs::Marker traj_marker_;
+        Vec3 last_traj_pos_;
         ros::Subscriber cmd_sub_;
-        ros::Publisher odom_pub_, robot_pub_, pose_pub_, path_pub_, global_pc_pub_, local_pc_pub_, vel_pub_;
+        ros::Publisher odom_pub_, robot_pub_, pose_pub_, path_pub_, global_pc_pub_, local_pc_pub_, vel_pub_,
+                traj_vis_pub_;
         ros::Timer odom_pub_timer_;
         ros::Timer pc_pub_timer_;
         ros::Timer global_pc_pub_timer_;
@@ -184,6 +199,19 @@ namespace perfect_drone {
 
             odom_pub_.publish(odom_);
 
+            /* 速度着色尾迹：按最小间距采样，颜色由蓝（慢）到红（快）。 */
+            if ((position_ - last_traj_pos_).norm() > cfg_.traj_distance_threshold) {
+                geometry_msgs::Point p;
+                p.x = position_.x();
+                p.y = position_.y();
+                p.z = position_.z();
+                traj_marker_.points.push_back(p);
+                traj_marker_.colors.push_back(speedToColor(velocity_.norm()));
+                traj_marker_.header.stamp = odom_.header.stamp;
+                traj_vis_pub_.publish(traj_marker_);
+                last_traj_pos_ = position_;
+            }
+
             geometry_msgs::PoseStamped pose;
             pose.pose = odom_.pose.pose;
             pose.header = odom_.header;
@@ -212,9 +240,9 @@ namespace perfect_drone {
             meshROS.action = visualization_msgs::Marker::ADD;
             meshROS.pose.position = odom_.pose.pose.position;
             meshROS.pose.orientation = odom_.pose.pose.orientation;
-            meshROS.scale.x = 1;
-            meshROS.scale.y = 1;
-            meshROS.scale.z = 1;
+            meshROS.scale.x = 0.5;
+            meshROS.scale.y = 0.5;
+            meshROS.scale.z = 0.5;
             meshROS.mesh_resource = mesh_resource_;
             meshROS.mesh_use_embedded_materials = false;
             meshROS.color.a = 1.0;
@@ -232,6 +260,32 @@ namespace perfect_drone {
                 path_.header = odom_.header;
                 path_pub_.publish(path_);
             }
+        }
+
+        static std_msgs::ColorRGBA hsvToRgb(double h, double s, double v) {
+            std_msgs::ColorRGBA rgb;
+            rgb.a = 0.8;
+            const int i = static_cast<int>(std::floor(h * 6));
+            const double f = h * 6 - i;
+            const double p = v * (1 - s);
+            const double q = v * (1 - f * s);
+            const double t = v * (1 - (1 - f) * s);
+            switch (i % 6) {
+                case 0: rgb.r = v; rgb.g = t; rgb.b = p; break;
+                case 1: rgb.r = q; rgb.g = v; rgb.b = p; break;
+                case 2: rgb.r = p; rgb.g = v; rgb.b = t; break;
+                case 3: rgb.r = p; rgb.g = q; rgb.b = v; break;
+                case 4: rgb.r = t; rgb.g = p; rgb.b = v; break;
+                default: rgb.r = v; rgb.g = p; rgb.b = q; break;
+            }
+            return rgb;
+        }
+
+        std_msgs::ColorRGBA speedToColor(double speed) const {
+            const double span = cfg_.traj_max_speed - cfg_.traj_min_speed;
+            double normalized = span > 1e-6 ? (speed - cfg_.traj_min_speed) / span : 1.0;
+            normalized = std::max(0.0, std::min(1.0, normalized));
+            return hsvToRgb((1.0 - normalized) * 240.0 / 360.0, 1.0, 1.0);
         }
 
         void updateFlatness(const Vec3 &pos, const Vec3 &vel,

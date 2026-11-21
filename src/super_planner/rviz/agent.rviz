@@ -4,10 +4,11 @@ Panels:
     Name: Displays
     Property Tree Widget:
       Expanded:
-        - /agent1
-        - /agent1/Sensors1/odom1/Shape1
+        - /ZeroAgent1
+        - /ZeroAgent1/Sensors1/odom1/Shape1
+        - /ZeroAgent1/Simulation1/robot_path1
       Splitter Ratio: 0.5011876225471497
-    Tree Height: 772
+    Tree Height: 535
   - Class: rviz/Selection
     Name: Selection
   - Class: rviz/Tool Properties
@@ -32,13 +33,13 @@ Visualization Manager:
   Displays:
     - Alpha: 0.800000011920929
       Class: rviz/Axes
-      Enabled: false
+      Enabled: true
       Length: 0.5
       Name: Axes
       Radius: 0.10000000149011612
       Reference Frame: world
       Show Trail: false
-      Value: false
+      Value: true
     - Alpha: 0.6000000238418579
       Cell Size: 1
       Class: rviz/Grid
@@ -227,7 +228,7 @@ Visualization Manager:
               Use rainbow: true
               Value: false
             - Class: rviz/Image
-              Enabled: true
+              Enabled: false
               Image Topic: /nav_mission_image
               Max Value: 1
               Median window: 5
@@ -237,7 +238,7 @@ Visualization Manager:
               Queue Size: 2
               Transport Hint: raw
               Unreliable: false
-              Value: true
+              Value: false
             - Class: rviz/Image
               Enabled: false
               Image Topic: /yoloe/plot
@@ -252,6 +253,130 @@ Visualization Manager:
               Value: false
           Enabled: true
           Name: Perception
+        - Class: rviz/Group
+          Displays:
+            - Alpha: 0.5
+              Autocompute Intensity Bounds: true
+              Autocompute Value Bounds:
+                Max Value: 1.9500000476837158
+                Min Value: 0.15000000596046448
+                Value: true
+              Axis: Z
+              Channel Name: intensity
+              Class: rviz/PointCloud2
+              Color: 186; 189; 182
+              Color Transformer: AxisColor
+              Decay Time: 0
+              Enabled: true
+              Invert Rainbow: false
+              Max Color: 255; 255; 255
+              Min Color: 0; 0; 0
+              Name: occupied
+              Position Transformer: XYZ
+              Queue Size: 10
+              Selectable: false
+              Size (Pixels): 3
+              Size (m): 0.11999999731779099
+              Style: Squares
+              Topic: /super_fsm/rog_map/occ
+              Unreliable: false
+              Use Fixed Frame: true
+              Use rainbow: true
+              Value: true
+            - Alpha: 1
+              Autocompute Intensity Bounds: true
+              Autocompute Value Bounds:
+                Max Value: 2.049999952316284
+                Min Value: 0.05000000074505806
+                Value: true
+              Axis: Z
+              Channel Name: intensity
+              Class: rviz/PointCloud2
+              Color: 114; 159; 207
+              Color Transformer: AxisColor
+              Decay Time: 0
+              Enabled: true
+              Invert Rainbow: false
+              Max Color: 255; 255; 255
+              Min Color: 0; 0; 0
+              Name: inflated
+              Position Transformer: XYZ
+              Queue Size: 10
+              Selectable: false
+              Size (Pixels): 3
+              Size (m): 0.10000000149011612
+              Style: Boxes
+              Topic: /super_fsm/rog_map/inf_occ
+              Unreliable: false
+              Use Fixed Frame: true
+              Use rainbow: true
+              Value: true
+            - Alpha: 0.15000000596046448
+              Autocompute Intensity Bounds: true
+              Autocompute Value Bounds:
+                Max Value: 1.9500000476837158
+                Min Value: -0.3499999940395355
+                Value: true
+              Axis: Z
+              Channel Name: intensity
+              Class: rviz/PointCloud2
+              Color: 70; 130; 180
+              Color Transformer: FlatColor
+              Decay Time: 0
+              Enabled: false
+              Invert Rainbow: false
+              Max Color: 255; 255; 255
+              Min Color: 0; 0; 0
+              Name: unknown
+              Position Transformer: XYZ
+              Queue Size: 10
+              Selectable: false
+              Size (Pixels): 3
+              Size (m): 0.10000000149011612
+              Style: Boxes
+              Topic: /super_fsm/rog_map/unk
+              Unreliable: false
+              Use Fixed Frame: true
+              Use rainbow: true
+              Value: false
+            - Alpha: 0.15000000596046448
+              Autocompute Intensity Bounds: true
+              Autocompute Value Bounds:
+                Max Value: 1.9500000476837158
+                Min Value: -0.3499999940395355
+                Value: true
+              Axis: Z
+              Channel Name: intensity
+              Class: rviz/PointCloud2
+              Color: 180; 70; 130
+              Color Transformer: FlatColor
+              Decay Time: 0
+              Enabled: false
+              Invert Rainbow: false
+              Max Color: 255; 255; 255
+              Min Color: 0; 0; 0
+              Name: inflated_unknown
+              Position Transformer: XYZ
+              Queue Size: 10
+              Selectable: false
+              Size (Pixels): 3
+              Size (m): 0.10000000149011612
+              Style: Boxes
+              Topic: /super_fsm/rog_map/inf_unk
+              Unreliable: false
+              Use Fixed Frame: true
+              Use rainbow: true
+              Value: false
+            - Class: rviz/MarkerArray
+              Enabled: false
+              Marker Topic: /super_fsm/rog_map/map_bound
+              Name: map_bound
+              Namespaces:
+                {}
+              Queue Size: 100
+              Value: false
+          Enabled: true
+          Name: Mapping
         - Class: rviz/Group
           Displays:
             - Class: rviz/MarkerArray
@@ -309,7 +434,7 @@ Visualization Manager:
               Buffer Length: 1
               Class: rviz/Path
               Color: 0; 255; 127
-              Enabled: true
+              Enabled: false
               Head Diameter: 0.30000001192092896
               Head Length: 0.20000000298023224
               Length: 0.30000001192092896
@@ -328,133 +453,17 @@ Visualization Manager:
               Shaft Length: 0.10000000149011612
               Topic: /super_fsm/fsm/path
               Unreliable: false
+              Value: false
+            - Class: rviz/Marker
+              Enabled: true
+              Marker Topic: /super_fsm/visualization/fov
+              Name: fov
+              Namespaces:
+                fov: true
+              Queue Size: 100
               Value: true
           Enabled: true
           Name: Planning
-        - Class: rviz/Group
-          Displays:
-            - Alpha: 0.6000000238418579
-              Autocompute Intensity Bounds: true
-              Autocompute Value Bounds:
-                Max Value: 1.9500000476837158
-                Min Value: -0.3499999940395355
-                Value: true
-              Axis: Z
-              Channel Name: intensity
-              Class: rviz/PointCloud2
-              Color: 186; 189; 182
-              Color Transformer: FlatColor
-              Decay Time: 0
-              Enabled: true
-              Invert Rainbow: false
-              Max Color: 255; 255; 255
-              Min Color: 0; 0; 0
-              Name: occupied
-              Position Transformer: XYZ
-              Queue Size: 10
-              Selectable: false
-              Size (Pixels): 3
-              Size (m): 0.2800000011920929
-              Style: Boxes
-              Topic: /super_fsm/rog_map/occ
-              Unreliable: false
-              Use Fixed Frame: true
-              Use rainbow: true
-              Value: true
-            - Alpha: 0.3499999940395355
-              Autocompute Intensity Bounds: true
-              Autocompute Value Bounds:
-                Max Value: 1.9500000476837158
-                Min Value: -0.3499999940395355
-                Value: true
-              Axis: Z
-              Channel Name: intensity
-              Class: rviz/PointCloud2
-              Color: 255; 140; 0
-              Color Transformer: FlatColor
-              Decay Time: 0
-              Enabled: false
-              Invert Rainbow: false
-              Max Color: 255; 255; 255
-              Min Color: 0; 0; 0
-              Name: inflated
-              Position Transformer: XYZ
-              Queue Size: 10
-              Selectable: false
-              Size (Pixels): 3
-              Size (m): 0.30000001192092896
-              Style: Boxes
-              Topic: /super_fsm/rog_map/inf_occ
-              Unreliable: false
-              Use Fixed Frame: true
-              Use rainbow: true
-              Value: false
-            - Alpha: 0.15000000596046448
-              Autocompute Intensity Bounds: true
-              Autocompute Value Bounds:
-                Max Value: 1.9500000476837158
-                Min Value: -0.3499999940395355
-                Value: true
-              Axis: Z
-              Channel Name: intensity
-              Class: rviz/PointCloud2
-              Color: 70; 130; 180
-              Color Transformer: FlatColor
-              Decay Time: 0
-              Enabled: false
-              Invert Rainbow: false
-              Max Color: 255; 255; 255
-              Min Color: 0; 0; 0
-              Name: unknown
-              Position Transformer: XYZ
-              Queue Size: 10
-              Selectable: false
-              Size (Pixels): 3
-              Size (m): 0.2800000011920929
-              Style: Boxes
-              Topic: /super_fsm/rog_map/unk
-              Unreliable: false
-              Use Fixed Frame: true
-              Use rainbow: true
-              Value: false
-            - Alpha: 0.15000000596046448
-              Autocompute Intensity Bounds: true
-              Autocompute Value Bounds:
-                Max Value: 1.9500000476837158
-                Min Value: -0.3499999940395355
-                Value: true
-              Axis: Z
-              Channel Name: intensity
-              Class: rviz/PointCloud2
-              Color: 180; 70; 130
-              Color Transformer: FlatColor
-              Decay Time: 0
-              Enabled: false
-              Invert Rainbow: false
-              Max Color: 255; 255; 255
-              Min Color: 0; 0; 0
-              Name: inflated_unknown
-              Position Transformer: XYZ
-              Queue Size: 10
-              Selectable: false
-              Size (Pixels): 3
-              Size (m): 0.30000001192092896
-              Style: Boxes
-              Topic: /super_fsm/rog_map/inf_unk
-              Unreliable: false
-              Use Fixed Frame: true
-              Use rainbow: true
-              Value: false
-            - Class: rviz/MarkerArray
-              Enabled: false
-              Marker Topic: /super_fsm/rog_map/map_bound
-              Name: map_bound
-              Namespaces:
-                {}
-              Queue Size: 100
-              Value: false
-          Enabled: true
-          Name: Mapping
         - Class: rviz/Group
           Displays:
             - Class: rviz/MarkerArray
@@ -543,6 +552,14 @@ Visualization Manager:
               Unreliable: false
               Value: true
             - Class: rviz/Marker
+              Enabled: true
+              Marker Topic: /perfect_tracking/traj_with_vel
+              Name: traj_with_vel
+              Namespaces:
+                trajectory: true
+              Queue Size: 100
+              Value: true
+            - Class: rviz/Marker
               Enabled: false
               Marker Topic: /perfect_tracking/vel_text
               Name: vel_text
@@ -553,7 +570,7 @@ Visualization Manager:
           Enabled: true
           Name: Simulation
       Enabled: true
-      Name: agent
+      Name: ZeroAgent
   Enabled: true
   Global Options:
     Background Color: 125; 125; 125
@@ -565,13 +582,13 @@ Visualization Manager:
     - Class: rviz/Interact
       Hide Inactive Objects: true
     - Class: rviz/Select
-    - Class: rviz/SetGoal
+    - Class: rviz_plugins/Goal3DTool
       Topic: /agent/goal
   Value: true
   Views:
     Current:
       Class: rviz/XYOrbit
-      Distance: 20.106220245361328
+      Distance: 29.675201416015625
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -579,17 +596,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: -3.193669319152832
-        Y: -9.950263023376465
-        Z: -9.000301361083984e-06
+        X: -2.4796853065490723
+        Y: -6.723287582397461
+        Z: 2.4437904357910156e-06
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.8897976875305176
+      Pitch: 0.714797854423523
       Target Frame: <Fixed Frame>
-      Yaw: 3.720444679260254
+      Yaw: 3.3654396533966064
     Saved:
       - Class: rviz/XYOrbit
         Distance: 15.792802810668945
@@ -617,7 +634,7 @@ Window Geometry:
   Height: 1371
   Hide Left Dock: false
   Hide Right Dock: false
-  QMainWindow State: 000000ff00000000fd0000000200000000000001a700000385fc0200000005fb000000100044006900730070006c00610079007301000001bb00000385000000c700fffffffb0000001200530065006c0065006300740069006f006e000000025f000000a50000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007300000002b2000000c00000005c00fffffffb0000000a0056006900650077007300000003230000018e000000a000fffffffb0000000800540069006d00650000000476000000ca0000003700ffffff00000002000009be0000017afc0100000004fb00000012007200670062005f00660072006f006e00740100000000000004b60000008300fffffffb0000001600640065007000740068005f00660072006f006e007400000002e2000001aa0000009200fffffffb0000001a006d0069007300730069006f006e005f0069006d00610067006501000004bc00000502000000a600fffffffb0000000a0079006f006c006f0065000000046c000005520000006d00ffffff000008110000038500000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd00000002000000000000022800000505fc0200000006fb000000100044006900730070006c006100790073010000003b00000298000000c700fffffffb00000012007200670062005f00660072006f006e007401000002d9000002670000001600fffffffb0000001200530065006c0065006300740069006f006e000000025f000000a50000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007300000002b2000000c00000005c00fffffffb0000000a0056006900650077007300000003230000018e000000a000fffffffb0000000800540069006d00650000000476000000ca0000003700ffffff00000002000009be0000017afc0100000003fb0000001600640065007000740068005f00660072006f006e007400000002e2000001aa0000009200fffffffb0000001a006d0069007300730069006f006e005f0069006d00610067006500000004bc00000502000000a600fffffffb0000000a0079006f006c006f0065000000046c000005520000006d00ffffff000007900000050500000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Selection:
     collapsed: false
   Time:
