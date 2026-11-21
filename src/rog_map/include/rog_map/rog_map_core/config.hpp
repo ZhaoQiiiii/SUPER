@@ -125,6 +125,8 @@ namespace rog_map {
             loader.LoadParam(name_space + "/visualization/frame_id", frame_id, string("world"));
             loader.LoadParam(name_space + "/visualization/time_rate", viz_time_rate, 0.0);
             loader.LoadParam(name_space + "/visualization/frame_rate", viz_frame_rate, 0);
+            loader.LoadParam(name_space + "/visualization/min_height", viz_min_height, -1e6);
+            loader.LoadParam(name_space + "/visualization/max_height", viz_max_height, 1e6);
             vector<double> temp_vis_range;
             loader.LoadParam(name_space + "/visualization/range", temp_vis_range, vector<double>{0, 0, 0});
             if (temp_vis_range.size() != 3) {
@@ -342,6 +344,10 @@ namespace rog_map {
         Vec3f visualization_range{};
         double viz_time_rate{};
         int viz_frame_rate{};
+        /* Fixed world-frame z interval of the visualized box [m]; only clips
+         * visualization, not the map. Both must be finite and ordered to enable. */
+        double viz_min_height{-1e6};
+        double viz_max_height{1e6};
 
         double unk_thresh{};
         double map_sliding_thresh{};

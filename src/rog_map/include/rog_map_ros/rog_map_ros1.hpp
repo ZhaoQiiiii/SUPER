@@ -161,6 +161,16 @@ namespace rog_map {
             Vec3f box_max = robot_state_.p + cfg_.visualization_range / 2;
             Vec3f box_min = robot_state_.p - cfg_.visualization_range / 2;
 
+            /* A finite, ordered [min_height, max_height] pins the visualized z
+             * interval in the world frame instead of letting it follow the robot;
+             * it shrinks the boxSearch volume like the x/y visualization range. */
+            const bool fixed_height = cfg_.viz_min_height > -1e5 && cfg_.viz_max_height < 1e5 &&
+                                      cfg_.viz_min_height < cfg_.viz_max_height;
+            if (fixed_height) {
+                box_min.z() = cfg_.viz_min_height;
+                box_max.z() = cfg_.viz_max_height;
+            }
+
             boundBoxByLocalMap(box_min, box_max);
             if ((box_max - box_min).minCoeff() <= 0) {
                 cout << YELLOW << " -- [ROGMap] Visualization range is too small." << RESET << endl;
