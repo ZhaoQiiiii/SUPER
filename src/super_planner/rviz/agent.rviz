@@ -5,7 +5,6 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /ZeroAgent1
-        - /ZeroAgent1/Simulation1/robot_path1
       Splitter Ratio: 0.5011876225471497
     Tree Height: 535
   - Class: rviz/Selection
@@ -342,7 +341,7 @@ Visualization Manager:
                 {}
               Queue Size: 100
               Value: false
-          Enabled: true
+          Enabled: false
           Name: Mapping
         - Class: rviz/Group
           Displays:
@@ -356,23 +355,21 @@ Visualization Manager:
               Queue Size: 100
               Value: true
             - Class: rviz/MarkerArray
-              Enabled: true
+              Enabled: false
               Marker Topic: /super_fsm/visualization/frontend_path
               Name: frontend_path
               Namespaces:
-                guide_path: true
-                guide_path_line: true
+                {}
               Queue Size: 100
-              Value: true
+              Value: false
             - Class: rviz/MarkerArray
-              Enabled: true
+              Enabled: false
               Marker Topic: /super_fsm/visualization/exp_traj
               Name: exp_traj
               Namespaces:
-                exp_traj: true
-                exp_traj_waypoints: true
+                {}
               Queue Size: 100
-              Value: true
+              Value: false
             - Class: rviz/MarkerArray
               Enabled: false
               Marker Topic: /super_fsm/visualization/backup_traj
@@ -382,21 +379,23 @@ Visualization Manager:
               Queue Size: 100
               Value: false
             - Class: rviz/MarkerArray
-              Enabled: false
+              Enabled: true
               Marker Topic: /super_fsm/visualization/committed_traj
               Name: committed_traj
               Namespaces:
-                {}
+                committed_backup: true
+                committed_exp: true
+                committed_exp_waypoints: true
               Queue Size: 100
-              Value: false
+              Value: true
             - Class: rviz/MarkerArray
-              Enabled: false
+              Enabled: true
               Marker Topic: /super_fsm/visualization/yaw_traj
               Name: yaw_traj
               Namespaces:
-                {}
+                yaw_traj: true
               Queue Size: 100
-              Value: false
+              Value: true
             - Alpha: 1
               Buffer Length: 1
               Class: rviz/Path
@@ -438,8 +437,7 @@ Visualization Manager:
               Marker Topic: /scene_graph/skeleton
               Name: Skeleton
               Namespaces:
-                edges: true
-                poly_belongs_to_area: true
+                {}
               Queue Size: 100
               Value: true
             - Class: rviz/MarkerArray
@@ -447,10 +445,7 @@ Visualization Manager:
               Marker Topic: /scene_graph/objects
               Name: Objects
               Namespaces:
-                obb_corners: true
-                obj_edge_all: true
-                obj_label: true
-                obj_position: true
+                {}
               Queue Size: 100
               Value: true
             - Class: rviz/MarkerArray
@@ -458,8 +453,7 @@ Visualization Manager:
               Marker Topic: /scene_graph/clusters
               Name: Clusters
               Namespaces:
-                clusters_box: true
-                clusters_sphere: true
+                {}
               Queue Size: 100
               Value: true
             - Class: rviz/MarkerArray
@@ -467,11 +461,7 @@ Visualization Manager:
               Marker Topic: /scene_graph/graph
               Name: Graph
               Namespaces:
-                scene_graph_obj_level: true
-                scene_graph_room_label_text: true
-                scene_graph_room_level: true
-                scene_graph_room_top_edge: true
-                scene_graph_top_level: true
+                {}
               Queue Size: 100
               Value: true
             - Class: rviz/MarkerArray
@@ -482,7 +472,7 @@ Visualization Manager:
                 {}
               Queue Size: 100
               Value: true
-          Enabled: true
+          Enabled: false
           Name: SceneGraph
         - Class: rviz/Group
           Displays:
@@ -493,30 +483,6 @@ Visualization Manager:
               Namespaces:
                 mesh: true
               Queue Size: 100
-              Value: true
-            - Alpha: 1
-              Buffer Length: 1
-              Class: rviz/Path
-              Color: 252; 175; 62
-              Enabled: true
-              Head Diameter: 0.30000001192092896
-              Head Length: 0.20000000298023224
-              Length: 0.30000001192092896
-              Line Style: Billboards
-              Line Width: 0.029999999329447746
-              Name: robot_path
-              Offset:
-                X: 0
-                Y: 0
-                Z: 0
-              Pose Color: 255; 85; 255
-              Pose Style: None
-              Queue Size: 10
-              Radius: 0.029999999329447746
-              Shaft Diameter: 0.10000000149011612
-              Shaft Length: 0.10000000149011612
-              Topic: /perfect_tracking/path
-              Unreliable: false
               Value: true
             - Class: rviz/Marker
               Enabled: true
@@ -555,7 +521,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/XYOrbit
-      Distance: 25.66850471496582
+      Distance: 19.543338775634766
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -563,17 +529,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: -2.4796853065490723
-        Y: -6.723287582397461
+        X: -0.9279136657714844
+        Y: -5.812489986419678
         Z: 2.4437904357910156e-06
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.7547979950904846
+      Pitch: 0.869797945022583
       Target Frame: <Fixed Frame>
-      Yaw: 3.49543833732605
+      Yaw: 3.4254372119903564
     Saved:
       - Class: rviz/XYOrbit
         Distance: 15.792802810668945
