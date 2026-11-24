@@ -38,28 +38,28 @@ namespace ros_interface {
                 : nh_(nh) {
 
             /*=============================FOR Planner========================================*/
-            goal_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("visualization/goal", 100);
+            goal_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("/super/planner/vis/goal", 100);
 
-            exp_traj_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("visualization/exp_traj", 100);
-            backup_traj_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("visualization/backup_traj", 100);
-            committed_traj_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("visualization/committed_traj", 100);
+            exp_traj_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("/super/planner/vis/exp_traj", 100);
+            backup_traj_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("/super/planner/vis/backup_traj", 100);
+            committed_traj_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("/super/planner/vis/committed_traj", 100);
 
-            exp_sfcs_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("visualization/exp_sfc", 100);
-            backup_sfc_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("visualization/backup_sfc", 100);
+            exp_sfcs_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("/super/planner/vis/exp_sfc", 100);
+            backup_sfc_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("/super/planner/vis/backup_sfc", 100);
 
-            guide_path_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("visualization/frontend_path", 100);
+            guide_path_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("/super/planner/vis/frontend_path", 100);
 
-            yaw_traj_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("visualization/yaw_traj", 100);
-
-            /*=============================FOR A* debug ========================================*/
-            astar_mkr_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("visualization/astar_debug", 100);
+            yaw_traj_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("/super/planner/vis/yaw_traj", 100);
 
             /*=============================FOR A* debug ========================================*/
-            ciri_mkr_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("visualization/ciri_debug_mkr", 100);
-            ciri_pc_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("visualization/ciri_debug_pc", 100);
+            astar_mkr_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("/super/planner/vis/astar_debug", 100);
+
+            /*=============================FOR A* debug ========================================*/
+            ciri_mkr_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("/super/planner/vis/ciri_debug_mkr", 100);
+            ciri_pc_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("/super/planner/vis/ciri_debug_pc", 100);
             /*=============================FOR replan log ========================================*/
-            replan_log_pc_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("visualization/replan_log_pc", 100);
-            replan_log_mkr_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("visualization/replan_log_mkr", 100);
+            replan_log_pc_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("/super/planner/vis/replan_log_pc", 100);
+            replan_log_mkr_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("/super/planner/vis/replan_log_mkr", 100);
         }
 
 

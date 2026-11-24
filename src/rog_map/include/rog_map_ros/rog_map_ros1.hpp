@@ -303,19 +303,19 @@ namespace rog_map {
             init();
             /// Initialize visualization module
             if (cfg_.visualization_en) {
-                vm_.occ_pub = nh_.advertise<sensor_msgs::PointCloud2>("rog_map/occ", 1);
-                vm_.unknown_pub = nh_.advertise<sensor_msgs::PointCloud2>("rog_map/unk", 1);
-                vm_.occ_inf_pub = nh_.advertise<sensor_msgs::PointCloud2>("rog_map/inf_occ", 1);
-                vm_.unknown_inf_pub = nh_.advertise<sensor_msgs::PointCloud2>("rog_map/inf_unk", 1);
+                vm_.occ_pub = nh_.advertise<sensor_msgs::PointCloud2>("/super/planner/rog_map/occ", 1);
+                vm_.unknown_pub = nh_.advertise<sensor_msgs::PointCloud2>("/super/planner/rog_map/unk", 1);
+                vm_.occ_inf_pub = nh_.advertise<sensor_msgs::PointCloud2>("/super/planner/rog_map/inf_occ", 1);
+                vm_.unknown_inf_pub = nh_.advertise<sensor_msgs::PointCloud2>("/super/planner/rog_map/inf_unk", 1);
 
                 if (cfg_.frontier_extraction_en) {
-                    vm_.frontier_pub = nh_.advertise<sensor_msgs::PointCloud2>("rog_map/frontier", 1);
+                    vm_.frontier_pub = nh_.advertise<sensor_msgs::PointCloud2>("/super/planner/rog_map/frontier", 1);
                 }
 
                 if (cfg_.esdf_en) {
-                    vm_.esdf_pub = nh_.advertise<sensor_msgs::PointCloud2>("rog_map/esdf", 1);
-                    vm_.esdf_neg_pub = nh_.advertise<sensor_msgs::PointCloud2>("rog_map/esdf/neg", 1);
-                    vm_.esdf_occ_pub = nh_.advertise<sensor_msgs::PointCloud2>("rog_map/esdf/occ", 1);
+                    vm_.esdf_pub = nh_.advertise<sensor_msgs::PointCloud2>("/super/planner/rog_map/esdf", 1);
+                    vm_.esdf_neg_pub = nh_.advertise<sensor_msgs::PointCloud2>("/super/planner/rog_map/esdf/neg", 1);
+                    vm_.esdf_occ_pub = nh_.advertise<sensor_msgs::PointCloud2>("/super/planner/rog_map/esdf/occ", 1);
                 }
 
                 if (cfg_.viz_time_rate > 0) {
@@ -323,7 +323,7 @@ namespace rog_map {
                                                     this);
                 }
             }
-            vm_.mkr_arr_pub = nh_.advertise<visualization_msgs::MarkerArray>("rog_map/map_bound", 1);
+            vm_.mkr_arr_pub = nh_.advertise<visualization_msgs::MarkerArray>("/super/planner/rog_map/map_bound", 1);
 
             if (cfg_.ros_callback_en) {
                 rc_.odom_sub = nh_.subscribe(cfg_.odom_topic, 1, &ROGMapROS::odomCallback, this);

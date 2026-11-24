@@ -48,15 +48,15 @@ namespace perfect_drone {
             nh_.param("pcd_path", pcd_path, std::string(""));
             cfg_ = Config(cfg_path);
             render_ptr_ = std::make_shared<marsim::MarsimRender>(cfg_path, pcd_path);
-            cmd_sub_ = nh_.subscribe("/planning/pos_cmd", 100, &PerfectDrone::cmdCallback, this);
-            odom_pub_ = nh_.advertise<nav_msgs::Odometry>("/lidar_slam/odom", 100);
-            pose_pub_ = nh_.advertise<geometry_msgs::PoseStamped>("/lidar_slam/pose", 100);
-            robot_pub_ = nh_.advertise<visualization_msgs::Marker>("robot", 100);
-            path_pub_ = nh_.advertise<nav_msgs::Path>("path", 100);
-            local_pc_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("/cloud_registered", 100);
-            global_pc_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("/global_pc", 100);
-            vel_pub_ = nh_.advertise<visualization_msgs::Marker>("vel_text", 100);
-            traj_vis_pub_ = nh_.advertise<visualization_msgs::Marker>("traj_with_vel", 100);
+            cmd_sub_ = nh_.subscribe("/super/planner/pos_cmd", 100, &PerfectDrone::cmdCallback, this);
+            odom_pub_ = nh_.advertise<nav_msgs::Odometry>("/super/sim/lidar_slam/odom", 100);
+            pose_pub_ = nh_.advertise<geometry_msgs::PoseStamped>("/super/sim/lidar_slam/pose", 100);
+            robot_pub_ = nh_.advertise<visualization_msgs::Marker>("/super/sim/vis/robot", 100);
+            path_pub_ = nh_.advertise<nav_msgs::Path>("/super/sim/vis/path", 100);
+            local_pc_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("/super/sim/cloud_registered", 100);
+            global_pc_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("/super/sim/global_pc", 100);
+            vel_pub_ = nh_.advertise<visualization_msgs::Marker>("/super/sim/vis/vel_text", 100);
+            traj_vis_pub_ = nh_.advertise<visualization_msgs::Marker>("/super/sim/vis/traj_with_vel", 100);
 
             position_ = cfg_.init_pos;
             velocity_.setZero();

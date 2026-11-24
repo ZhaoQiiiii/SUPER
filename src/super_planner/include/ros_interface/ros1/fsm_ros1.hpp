@@ -282,8 +282,8 @@ namespace fsm {
             planner_ptr_ = std::make_shared<SuperPlanner>(cfg_path, ros_ptr_, map_ptr_);
             cmd_pub = nh_.advertise<quadrotor_msgs::PositionCommand>(cfg_.cmd_topic, 10);
             mpc_cmd_pub_ = nh_.advertise<quadrotor_msgs::PolynomialTrajectory>(cfg_.mpc_cmd_topic, 10);
-            path_pub_ = nh_.advertise<nav_msgs::Path>("fsm/path", 100);
-            fov_pub_ = nh_.advertise<visualization_msgs::Marker>("visualization/fov", 10);
+            path_pub_ = nh_.advertise<nav_msgs::Path>("/super/planner/path", 100);
+            fov_pub_ = nh_.advertise<visualization_msgs::Marker>("/super/planner/vis/fov", 10);
 
             int cmd_cnt = 0;
 
