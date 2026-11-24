@@ -110,7 +110,7 @@ Visualization Manager:
                 Shaft Length: 1
                 Shaft Radius: 0.05000000074505806
                 Value: Axes
-              Topic: /lidar_slam/odom
+              Topic: /super/lidar_slam/odom
               Unreliable: false
               Value: false
             - Class: rviz/Image
@@ -184,7 +184,7 @@ Visualization Manager:
               Size (Pixels): 3
               Size (m): 0.019999999552965164
               Style: Flat Squares
-              Topic: /global_pc
+              Topic: /super/global_pc
               Unreliable: false
               Use Fixed Frame: true
               Use rainbow: true
@@ -212,7 +212,7 @@ Visualization Manager:
               Size (Pixels): 3
               Size (m): 0.019999999552965164
               Style: Flat Squares
-              Topic: /cloud_registered
+              Topic: /super/cloud_registered
               Unreliable: false
               Use Fixed Frame: true
               Use rainbow: true
@@ -341,7 +341,7 @@ Visualization Manager:
                 {}
               Queue Size: 100
               Value: false
-          Enabled: false
+          Enabled: true
           Name: Mapping
         - Class: rviz/Group
           Displays:
@@ -437,7 +437,8 @@ Visualization Manager:
               Marker Topic: /scene_graph/skeleton
               Name: Skeleton
               Namespaces:
-                {}
+                edges: true
+                poly_belongs_to_area: true
               Queue Size: 100
               Value: true
             - Class: rviz/MarkerArray
@@ -445,7 +446,10 @@ Visualization Manager:
               Marker Topic: /scene_graph/objects
               Name: Objects
               Namespaces:
-                {}
+                obb_corners: true
+                obj_edge_all: true
+                obj_label: true
+                obj_position: true
               Queue Size: 100
               Value: true
             - Class: rviz/MarkerArray
@@ -453,7 +457,8 @@ Visualization Manager:
               Marker Topic: /scene_graph/clusters
               Name: Clusters
               Namespaces:
-                {}
+                clusters_box: true
+                clusters_sphere: true
               Queue Size: 100
               Value: true
             - Class: rviz/MarkerArray
@@ -461,7 +466,11 @@ Visualization Manager:
               Marker Topic: /scene_graph/graph
               Name: Graph
               Namespaces:
-                {}
+                scene_graph_obj_level: true
+                scene_graph_room_label_text: true
+                scene_graph_room_level: true
+                scene_graph_room_top_edge: true
+                scene_graph_top_level: true
               Queue Size: 100
               Value: true
             - Class: rviz/MarkerArray
@@ -472,7 +481,7 @@ Visualization Manager:
                 {}
               Queue Size: 100
               Value: true
-          Enabled: false
+          Enabled: true
           Name: SceneGraph
         - Class: rviz/Group
           Displays:
@@ -521,7 +530,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/XYOrbit
-      Distance: 19.543338775634766
+      Distance: 27.78278160095215
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -529,17 +538,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: -0.9279136657714844
-        Y: -5.812489986419678
+        X: -2.7736358642578125
+        Y: -7.762129306793213
         Z: 2.4437904357910156e-06
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.869797945022583
+      Pitch: 0.9147979021072388
       Target Frame: <Fixed Frame>
-      Yaw: 3.4254372119903564
+      Yaw: 3.4054372310638428
     Saved:
       - Class: rviz/XYOrbit
         Distance: 15.792802810668945
