@@ -434,7 +434,7 @@ Visualization Manager:
           Displays:
             - Class: rviz/MarkerArray
               Enabled: true
-              Marker Topic: /scene_graph/skeleton
+              Marker Topic: /agent/graph_nav/skeleton
               Name: Skeleton
               Namespaces:
                 edges: true
@@ -443,7 +443,7 @@ Visualization Manager:
               Value: true
             - Class: rviz/MarkerArray
               Enabled: true
-              Marker Topic: /scene_graph/objects
+              Marker Topic: /agent/graph_nav/objects
               Name: Objects
               Namespaces:
                 obb_corners: true
@@ -454,7 +454,7 @@ Visualization Manager:
               Value: true
             - Class: rviz/MarkerArray
               Enabled: true
-              Marker Topic: /scene_graph/clusters
+              Marker Topic: /agent/graph_nav/clusters
               Name: Clusters
               Namespaces:
                 clusters_box: true
@@ -463,7 +463,7 @@ Visualization Manager:
               Value: true
             - Class: rviz/MarkerArray
               Enabled: true
-              Marker Topic: /scene_graph/graph
+              Marker Topic: /agent/graph_nav/graph
               Name: Graph
               Namespaces:
                 scene_graph_obj_level: true
@@ -475,7 +475,7 @@ Visualization Manager:
               Value: true
             - Class: rviz/MarkerArray
               Enabled: true
-              Marker Topic: /scene_graph/path
+              Marker Topic: /agent/graph_nav/path
               Name: Path
               Namespaces:
                 {}
