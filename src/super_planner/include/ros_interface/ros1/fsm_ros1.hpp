@@ -36,6 +36,7 @@
 #include "nav_msgs/Odometry.h"
 #include "quadrotor_msgs/PositionCommand.h"
 #include "quadrotor_msgs/PolynomialTrajectory.h"
+#include "std_msgs/Bool.h"
 #include "visualization_msgs/Marker.h"
 #include <cmath>
 #include <mutex>
@@ -47,6 +48,7 @@ namespace fsm {
         ros::Subscriber goal_sub_;
         ros::Subscriber goal_yaw_sub_;
         ros::Publisher cmd_pub, mpc_cmd_pub_, path_pub_, fov_pub_;
+        ros::Publisher traj_done_pub_, adjusted_pub_, abandoned_pub_;
         ros::Timer execution_timer_, replan_timer_, cmd_timer_;
         quadrotor_msgs::PositionCommand pid_cmd_;
         rog_map::ROGMapROS::Ptr map_ptr_;
@@ -274,6 +276,7 @@ namespace fsm {
             if (traj_finish_) {
                 cout << GREEN << " -- [Fsm] Traj finish." << RESET << endl;
                 if (closeToGoal(0.1)) {
+                    publishTrajDone();
                     ChangeState("getPoseFromTraj", WAIT_GOAL);
                 } else {
                     ChangeState("getPoseFromTraj", GENERATE_TRAJ);
@@ -301,7 +304,42 @@ namespace fsm {
             super_utils::Vec3f goal_p = Vec3f{msg->pose.position.x, msg->pose.position.y, msg->pose.position.z};
             super_utils::Quatf goal_q = super_utils::Quatf{msg->pose.orientation.w, msg->pose.orientation.x,
                                                            msg->pose.orientation.y, msg->pose.orientation.z};
-            setGoalPosiAndYaw(goal_p, goal_q);
+
+            if (!setGoalPosiAndYaw(goal_p, goal_q)) {
+                std_msgs::Bool abandoned;
+                abandoned.data = true;
+                abandoned_pub_.publish(abandoned);
+                return;
+            }
+
+            std_msgs::Bool done;
+            done.data = false;
+            traj_done_pub_.publish(done);
+
+            if ((gi_.goal_p - goal_p).norm() > 1e-3) {
+                geometry_msgs::PoseStamped adjusted;
+                adjusted.header.stamp = ros::Time::now();
+                adjusted.header.frame_id = "world";
+                adjusted.pose.position.x = gi_.goal_p.x();
+                adjusted.pose.position.y = gi_.goal_p.y();
+                adjusted.pose.position.z = gi_.goal_p.z();
+                if (std::isnan(gi_.goal_yaw)) {
+                    adjusted.pose.orientation.w = 1.0;
+                } else {
+                    const Eigen::Quaterniond q = geometry_utils::yaw_to_quaternion<double>(gi_.goal_yaw);
+                    adjusted.pose.orientation.x = q.x();
+                    adjusted.pose.orientation.y = q.y();
+                    adjusted.pose.orientation.z = q.z();
+                    adjusted.pose.orientation.w = q.w();
+                }
+                adjusted_pub_.publish(adjusted);
+            }
+        }
+
+        void publishTrajDone() {
+            std_msgs::Bool done;
+            done.data = true;
+            traj_done_pub_.publish(done);
         }
 
         void yawCallback(const geometry_msgs::QuaternionStampedConstPtr &msg) {
@@ -373,6 +411,9 @@ namespace fsm {
             mpc_cmd_pub_ = nh_.advertise<quadrotor_msgs::PolynomialTrajectory>(cfg_.mpc_cmd_topic, 10);
             path_pub_ = nh_.advertise<nav_msgs::Path>("/super/planner/path", 100);
             fov_pub_ = nh_.advertise<visualization_msgs::Marker>("/super/planner/vis/fov", 10);
+            traj_done_pub_ = nh_.advertise<std_msgs::Bool>("/super/fsm/traj_done", 10);
+            adjusted_pub_ = nh_.advertise<geometry_msgs::PoseStamped>("/super/fsm/goal_adjusted", 10);
+            abandoned_pub_ = nh_.advertise<std_msgs::Bool>("/super/fsm/goal_abandoned", 10);
 
             int cmd_cnt = 0;
 
@@ -438,6 +479,7 @@ namespace fsm {
             if (traj_finish_) {
                 cout << GREEN << " -- [Fsm] Traj finish." << RESET << endl;
                 if (closeToGoal(0.1)) {
+                    publishTrajDone();
                     ChangeState("PubCmdCallback", WAIT_GOAL);
                 } else {
                     ChangeState("PubCmdCallback", GENERATE_TRAJ);

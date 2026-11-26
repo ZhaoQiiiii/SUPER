@@ -158,7 +158,7 @@ namespace fsm {
 
         bool closeToGoal(const double &thresh_dis);
 
-        void setGoalPosiAndYaw(const Vec3f &p, const Quatf &q);
+        bool setGoalPosiAndYaw(const Vec3f &p, const Quatf &q);
 
         void ChangeState(const string &call_func, const MACHINE_STATE &new_state);
 

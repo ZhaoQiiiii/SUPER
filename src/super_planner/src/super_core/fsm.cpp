@@ -181,7 +181,7 @@ namespace fsm {
         return dis < thresh_dis;
     }
 
-    void Fsm::setGoalPosiAndYaw(const Vec3f &p, const Quatf &q) {
+    bool Fsm::setGoalPosiAndYaw(const Vec3f &p, const Quatf &q) {
 
         auto click_point = p;
         if (cfg_.click_height > -5) {
@@ -192,13 +192,13 @@ namespace fsm {
             cout << GREEN << " -- [Fsm] Get goal at " << RESET << gi_.goal_p.transpose() << endl;
         } else {
             fmt::print(fg(fmt::color::indian_red), "Goal is deeply occupied, skip this goal.\n");
-            return;
+            return false;
         }
 
         if ((robot_state_.p - gi_.goal_p).norm() <
             0.1) {
             //                print(fg(color::gray), " -- [Rviz] Too close to goal, skip this target.\n");
-            return;
+            return false;
         }
 
         if (cfg_.click_yaw_en) {
@@ -220,6 +220,7 @@ namespace fsm {
 
         started_ = true;
         gi_.new_goal = true;
+        return true;
     }
 
     void Fsm::ChangeState(const string &call_func, const MACHINE_STATE &new_state) {
