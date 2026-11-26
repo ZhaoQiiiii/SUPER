@@ -525,7 +525,7 @@ Visualization Manager:
       Hide Inactive Objects: true
     - Class: rviz/Select
     - Class: rviz_plugins/Goal3DTool
-      Topic: /agent/core/goal/pos
+      Topic: /agent/core/goal_pos
   Value: true
   Views:
     Current:

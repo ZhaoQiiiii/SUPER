@@ -28,6 +28,7 @@
 #include <data_structure/exp_traj.h>
 #include <data_structure/backup_traj.h>
 #include <data_structure/base/trajectory.h>
+#include <cstdint>
 
 
 namespace super_planner {
@@ -50,6 +51,12 @@ namespace super_planner {
         /* some part of exp traj may belong to last backup, record this */
         double on_backup_start_TT_{-1}, on_backup_end_TT_{-1};
         bool first_part_exp_has_backup_traj_{false};
+
+        /* Bumped whenever the committed position trajectory changes.  A yaw
+         * update commits only if the position version it was built against is
+         * still current, so a concurrent replan never pairs a new position
+         * trajectory with a yaw trajectory spliced to the old one. */
+        uint64_t pos_version_{0};
 
 
         /* some flags */
@@ -104,6 +111,7 @@ namespace super_planner {
 
             flag_empty_ = false;
             flag_backup_traj_avilibale_ = true;
+            ++pos_version_;
             checkFirstPartBackupTraj(exp_traj);
             return true;
         }
@@ -116,6 +124,7 @@ namespace super_planner {
             flag_empty_ = false;
             backup_traj_start_TT_ = 99999999;
             flag_backup_traj_avilibale_ = false;
+            ++pos_version_;
             checkFirstPartBackupTraj(exp_traj);
         }
 
@@ -158,15 +167,86 @@ namespace super_planner {
         }
 
         Vec3f getYaw(const double & t)const {
+            if (yaw_traj_.empty()) {
+                return Vec3f::Zero();
+            }
             return yaw_traj_.getPos(t);
         }
 
         Vec3f getYawRate(const double & t)const {
+            if (yaw_traj_.empty()) {
+                return Vec3f::Zero();
+            }
             return yaw_traj_.getVel(t);
         }
 
         StatePVAJ getYawState(const double &t)const {
-            return yaw_traj_.getState(t);
+            StatePVAJ state = StatePVAJ::Zero();
+            if (!yaw_traj_.empty()) {
+                yaw_traj_.getState(t, state);
+            }
+            return state;
+        }
+
+        uint64_t getPositionVersion() {
+            LOCK_G
+            return pos_version_;
+        }
+
+        /* Copy the committed position/yaw pair for an out-of-lock splice. */
+        bool snapshotCommitted(Trajectory &pos_traj,
+                               Trajectory &yaw_traj,
+                               uint64_t &pos_version,
+                               double &start_WT) {
+            LOCK_G
+            if (flag_empty_) {
+                return false;
+            }
+            pos_traj = pos_traj_;
+            yaw_traj = yaw_traj_;
+            pos_version = pos_version_;
+            start_WT = pos_traj_.start_WT;
+            return true;
+        }
+
+        /* Replace only the yaw trajectory, keeping the position trajectory,
+         * its time base and the backup-trajectory bookkeeping untouched. */
+        bool setYawTrajectory(const Trajectory &yaw_traj,
+                              const uint64_t &expected_pos_version) {
+            LOCK_G
+            if (flag_empty_ || expected_pos_version != pos_version_) {
+                return false;
+            }
+            if (yaw_traj.empty() ||
+                yaw_traj.getTotalDuration() + 1e-6 < pos_traj_.getTotalDuration()) {
+                return false;
+            }
+            yaw_traj_ = yaw_traj;
+            yaw_traj_.start_WT = pos_traj_.start_WT;
+            return true;
+        }
+
+        /* Evaluate the committed yaw trajectory in wall-clock time. */
+        bool getYawStateAtWallTime(const double &wall_time, StatePVAJ &state) {
+            LOCK_G
+            if (yaw_traj_.empty()) {
+                return false;
+            }
+            const double t = wall_time - yaw_traj_.start_WT;
+            if (t < 0.0 || t > yaw_traj_.getTotalDuration()) {
+                return false;
+            }
+            return yaw_traj_.getState(t, state);
+        }
+
+        /* Final yaw state, used to hold the last heading after the committed
+         * yaw trajectory has expired. */
+        bool getLastYawState(StatePVAJ &state) {
+            LOCK_G
+            if (yaw_traj_.empty()) {
+                return false;
+            }
+            return yaw_traj_.getState(yaw_traj_.getTotalDuration(), state);
         }
 
         const Trajectory & posTraj() const {

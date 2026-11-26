@@ -25,6 +25,8 @@
 
 #include <iostream>
 #include <fstream>
+#include <cstdint>
+#include <mutex>
 #include "Eigen/Eigen"
 
 
@@ -98,6 +100,27 @@ namespace super_planner {
 
         vector<double> time_consuming_;
 
+        /* Independent yaw reference (/super/goal_yaw).  The subscriber only
+         * stores the latest target; the FSM timer splices it into the
+         * committed yaw trajectory. */
+        std::mutex yaw_state_mutex_;
+        std::mutex yaw_ref_mutex_;
+        std::mutex yaw_traj_mutex_;
+
+        bool yaw_ref_received_{false};
+        double yaw_ref_target_{0.0};
+        double yaw_ref_receipt_WT_{0.0};
+        double yaw_reference_timeout_s_{0.5};
+        uint64_t yaw_ref_seq_{0};
+        uint64_t yaw_ref_applied_seq_{0};
+        uint64_t yaw_applied_pos_version_{0};
+        bool yaw_timeout_applied_{true};
+        bool yaw_traj_updated_{false};
+
+        Trajectory idle_yaw_traj_{};
+        bool idle_yaw_active_{false};
+        bool idle_yaw_settling_{false};
+
     public:
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
@@ -135,6 +158,18 @@ namespace super_planner {
 
         void getModuleTimeConsuming(vector<double> &time);
 
+        /* Independent yaw reference.  All methods are safe to call from ROS
+         * callback threads; the FSM timer drives updateYawReference(). */
+        void setYawReference(const double &yaw, const double &receipt_WT);
+
+        void setYawReferenceTimeout(const double &timeout_s);
+
+        void updateYawReference();
+
+        bool consumeYawTrajectoryUpdate();
+
+        bool getOneIdleYawCommand(StatePVAJ &pvaj, double &yaw, double &yaw_dot);
+
         /* Tow type of replan strategy */
         RET_CODE PlanFromRest(const Vec3f &goal_p,
                               const double &goal_yaw,
@@ -157,6 +192,42 @@ namespace super_planner {
         bool PathSearch(const Vec3f &start_pt, const Vec3f &goal,
                         const double &searching_horizon,
                         vec_Vec3f &path);
+
+        bool buildYawTargetSegment(const Vec4f &init_state,
+                                   const double &target_yaw,
+                                   const double &min_duration,
+                                   Trajectory &out_traj);
+
+        bool buildDefaultYawSegment(const Vec4f &init_state,
+                                    const Trajectory &pos_remaining,
+                                    Trajectory &out_traj);
+
+        bool buildYawHoldSegment(const double &yaw,
+                                 const double &duration,
+                                 Trajectory &out_traj);
+
+        bool commitYawTrajectory(const Trajectory &prefix,
+                                 const Trajectory &segment,
+                                 const double &start_WT,
+                                 const double &pos_total,
+                                 const uint64_t &pos_version);
+
+        /* Commit a new position trajectory while carrying the active yaw
+         * reference across the replan instead of falling back to the default
+         * yaw planned for the new position trajectory. */
+        void commitPositionTrajectory(const ExpTraj &exp_traj,
+                                      const BackupTraj *backup_traj);
+
+        void applyActiveYawReference(const Vec4f &init_state);
+
+        Vec4f committedYawStateAt(const double &wall_time);
+
+        bool yawReferenceActive(double &target_yaw, uint64_t &ref_seq);
+
+        void updateIdleYawReference(const bool &valid_reference,
+                                    const double &target_yaw,
+                                    const uint64_t &ref_seq,
+                                    const double &now);
 
 
     public:

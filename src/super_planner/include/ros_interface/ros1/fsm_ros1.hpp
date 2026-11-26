@@ -31,24 +31,29 @@
 
 #include "ros/ros.h"
 #include "geometry_msgs/PoseStamped.h"
+#include "geometry_msgs/QuaternionStamped.h"
 #include "nav_msgs/Path.h"
 #include "nav_msgs/Odometry.h"
 #include "quadrotor_msgs/PositionCommand.h"
 #include "quadrotor_msgs/PolynomialTrajectory.h"
 #include "visualization_msgs/Marker.h"
 #include <cmath>
+#include <mutex>
 
 
 namespace fsm {
     class FsmRos1 : public Fsm {
         ros::NodeHandle nh_;
         ros::Subscriber goal_sub_;
+        ros::Subscriber goal_yaw_sub_;
         ros::Publisher cmd_pub, mpc_cmd_pub_, path_pub_, fov_pub_;
         ros::Timer execution_timer_, replan_timer_, cmd_timer_;
         quadrotor_msgs::PositionCommand pid_cmd_;
         rog_map::ROGMapROS::Ptr map_ptr_;
         quadrotor_msgs::PositionCommand latest_cmd;
         nav_msgs::Path path;
+        double last_yaw_stamp_{-1.0};
+        std::mutex yaw_input_mutex_;
 
         vector<quadrotor_msgs::PositionCommand> cmd_logs_;
 
@@ -107,22 +112,8 @@ namespace fsm {
             cmd_traj.coef_pos_z.resize(cmd_traj.piece_num_pos * (cmd_traj.order_pos + 1));
             cmd_traj.start_WT_pos = ros::Time(pos_traj.start_WT);
 
-            if (!yaw_traj.empty()) {
-                cmd_traj.type = cmd_traj.type |
-                                quadrotor_msgs::PolynomialTrajectory::YAW_TRAJ;
-                cmd_traj.piece_num_yaw = yaw_traj.getPieceNum();
-                cmd_traj.order_yaw = 7;
-                double col_size = cmd_traj.order_yaw + 1;
-                cmd_traj.coef_yaw.resize(cmd_traj.piece_num_yaw * col_size);
-                cmd_traj.time_yaw.resize(cmd_traj.piece_num_yaw);
-                for (int i = 0; i < cmd_traj.piece_num_yaw; i++) {
-                    Eigen::VectorXd yaw_coef = yaw_traj[i].getCoeffMat().row(0);
-                    Eigen::Map<Eigen::VectorXd>(&cmd_traj.coef_yaw[col_size * i], col_size) = yaw_coef;
-                    cmd_traj.time_yaw[i] = yaw_traj[i].getDuration();
-                }
-                cmd_traj.start_WT_yaw = ros::Time(yaw_traj.start_WT);
-            }
-
+            /* Fill position first: a yaw serialization problem must never leave
+             * the position coefficients/time arrays zeroed in a published msg. */
             for (int i = 0; i < cmd_traj.piece_num_pos; i++) {
                 Eigen::Matrix<double, 3, 8> coef = pos_traj[i].getCoeffMat();
                 Eigen::Map<Eigen::VectorXd>(&cmd_traj.coef_pos_x[8 * i], 8) = coef.row(0);
@@ -130,14 +121,57 @@ namespace fsm {
                 Eigen::Map<Eigen::VectorXd>(&cmd_traj.coef_pos_z[8 * i], 8) = coef.row(2);
                 cmd_traj.time_pos[i] = pos_traj[i].getDuration();
             }
+
+            if (!yaw_traj.empty()) {
+                cmd_traj.type = cmd_traj.type |
+                                quadrotor_msgs::PolynomialTrajectory::YAW_TRAJ;
+                cmd_traj.piece_num_yaw = yaw_traj.getPieceNum();
+                cmd_traj.order_yaw = yaw_traj[0].getDegree();
+                double col_size = cmd_traj.order_yaw + 1;
+                cmd_traj.coef_yaw.resize(cmd_traj.piece_num_yaw * col_size);
+                cmd_traj.time_yaw.resize(cmd_traj.piece_num_yaw);
+                bool yaw_serialized = true;
+                for (int i = 0; i < cmd_traj.piece_num_yaw; i++) {
+                    Eigen::VectorXd yaw_coef = yaw_traj[i].getCoeffMat().row(0);
+                    if (yaw_coef.size() != col_size) {
+                        ROS_WARN_THROTTLE(5.0,
+                                          " -- [Fsm] yaw traj piece %d degree %ld != %d; "
+                                          "clearing YAW_TRAJ for this message.",
+                                          i, (long) yaw_coef.size() - 1, cmd_traj.order_yaw);
+                        yaw_serialized = false;
+                        break;
+                    }
+                    Eigen::Map<Eigen::VectorXd>(&cmd_traj.coef_yaw[col_size * i], col_size) = yaw_coef;
+                    cmd_traj.time_yaw[i] = yaw_traj[i].getDuration();
+                }
+                if (yaw_serialized) {
+                    cmd_traj.start_WT_yaw = ros::Time(yaw_traj.start_WT);
+                } else {
+                    cmd_traj.type = cmd_traj.type &
+                                    ~quadrotor_msgs::PolynomialTrajectory::YAW_TRAJ;
+                    cmd_traj.piece_num_yaw = 0;
+                    cmd_traj.order_yaw = 0;
+                    cmd_traj.coef_yaw.clear();
+                    cmd_traj.time_yaw.clear();
+                }
+            }
         }
 
         void getOnePositionCommand(quadrotor_msgs::PositionCommand &pos_cmd, bool &traj_finish) {
-            pos_cmd.trajectory_flag = 0;
             StatePVAJ pvaj;
             double yaw, yaw_dot;
             bool on_backup_traj;
             planner_ptr_->getOneCommandFromTraj(pvaj, yaw, yaw_dot, on_backup_traj, traj_finish);
+            fillPositionCommand(pos_cmd, pvaj, yaw, yaw_dot, on_backup_traj ? 2 : 1);
+            latest_cmd = pos_cmd;
+            cmd_logs_.push_back(latest_cmd);
+        }
+
+        void fillPositionCommand(quadrotor_msgs::PositionCommand &pos_cmd,
+                                 const StatePVAJ &pvaj,
+                                 const double &yaw,
+                                 const double &yaw_dot,
+                                 const int &trajectory_flag) {
             pos_cmd.header.stamp = ros::Time::now();
             pos_cmd.header.frame_id = "world";
             pos_cmd.position.x = pvaj(0, 0);
@@ -154,11 +188,11 @@ namespace fsm {
             pos_cmd.jerk.z = pvaj(2, 3);
             pos_cmd.yaw = yaw;
             pos_cmd.yaw_dot = yaw_dot;
-            pos_cmd.trajectory_flag = on_backup_traj ? 2 : 1;
+            pos_cmd.trajectory_flag = trajectory_flag;
             Vec3f rpy, omg;
             double aT;
-            geometry_utils::convertFlatOutputToAttAndOmg(pvaj.col(0), pvaj.col(1), pvaj.col(2), pvaj.col(3), yaw,
-                                                         yaw_dot, rpy, omg, aT);
+            geometry_utils::convertFlatOutputToAttAndOmg(pvaj.col(0), pvaj.col(1), pvaj.col(2),
+                                                         pvaj.col(3), yaw, yaw_dot, rpy, omg, aT);
             pos_cmd.attitude.x = rpy(0);
             pos_cmd.attitude.y = rpy(1);
             pos_cmd.attitude.z = rpy(2);
@@ -166,8 +200,6 @@ namespace fsm {
             pos_cmd.angular_velocity.y = omg(1);
             pos_cmd.angular_velocity.z = omg(2);
             pos_cmd.thrust.z = aT;
-            latest_cmd = pos_cmd;
-            cmd_logs_.push_back(latest_cmd);
         }
 
     public:
@@ -272,6 +304,62 @@ namespace fsm {
             setGoalPosiAndYaw(goal_p, goal_q);
         }
 
+        void yawCallback(const geometry_msgs::QuaternionStampedConstPtr &msg) {
+            std::lock_guard<std::mutex> guard(yaw_input_mutex_);
+            if (!msg->header.frame_id.empty() && msg->header.frame_id != "world") {
+                ROS_WARN_THROTTLE(5.0,
+                                  " -- [Fsm] ignore goal_yaw in frame '%s' (expected world).",
+                                  msg->header.frame_id.c_str());
+                return;
+            }
+            const auto &q = msg->quaternion;
+            if (!std::isfinite(q.w) || !std::isfinite(q.x) ||
+                !std::isfinite(q.y) || !std::isfinite(q.z)) {
+                ROS_WARN_THROTTLE(5.0, " -- [Fsm] ignore goal_yaw with non-finite quaternion.");
+                return;
+            }
+            const double norm_sq = q.w * q.w + q.x * q.x + q.y * q.y + q.z * q.z;
+            if (norm_sq < 1e-12) {
+                ROS_WARN_THROTTLE(5.0, " -- [Fsm] ignore goal_yaw with zero quaternion.");
+                return;
+            }
+            const double inv_norm = 1.0 / std::sqrt(norm_sq);
+            const double qw = q.w * inv_norm;
+            const double qx = q.x * inv_norm;
+            const double qy = q.y * inv_norm;
+            const double qz = q.z * inv_norm;
+            const double now = ros_ptr_->getSimTime();
+            if (now <= 0.0) {
+                return;
+            }
+            double stamp = msg->header.stamp.toSec();
+            if (!std::isfinite(stamp) || stamp <= 0.0) {
+                stamp = now;
+            }
+            if (stamp > now + cfg_.goal_yaw_timeout_s) {
+                ROS_WARN_THROTTLE(5.0,
+                                  " -- [Fsm] ignore goal_yaw from the future (stamp %.3f, now %.3f).",
+                                  stamp, now);
+                return;
+            }
+            if (stamp < now - cfg_.goal_yaw_timeout_s) {
+                ROS_WARN_THROTTLE(5.0,
+                                  " -- [Fsm] ignore stale goal_yaw (stamp %.3f, now %.3f).",
+                                  stamp, now);
+                return;
+            }
+            if (stamp <= last_yaw_stamp_) {
+                ROS_WARN_THROTTLE(5.0,
+                                  " -- [Fsm] ignore out-of-order goal_yaw (stamp %.3f <= %.3f).",
+                                  stamp, last_yaw_stamp_);
+                return;
+            }
+            last_yaw_stamp_ = stamp;
+            const double yaw = std::atan2(2.0 * (qw * qz + qx * qy),
+                                          1.0 - 2.0 * (qy * qy + qz * qz));
+            planner_ptr_->setYawReference(yaw, now);
+        }
+
         void init(const ros::NodeHandle &nh, const std::string &cfg_path) {
             // 初始化参数读取
             nh_ = nh;
@@ -280,6 +368,7 @@ namespace fsm {
             // 初始化Planner
             ros_ptr_ = std::make_shared<ros_interface::Ros1Interface>(nh_);
             planner_ptr_ = std::make_shared<SuperPlanner>(cfg_path, ros_ptr_, map_ptr_);
+            planner_ptr_->setYawReferenceTimeout(cfg_.goal_yaw_timeout_s);
             cmd_pub = nh_.advertise<quadrotor_msgs::PositionCommand>(cfg_.cmd_topic, 10);
             mpc_cmd_pub_ = nh_.advertise<quadrotor_msgs::PolynomialTrajectory>(cfg_.mpc_cmd_topic, 10);
             path_pub_ = nh_.advertise<nav_msgs::Path>("/super/planner/path", 100);
@@ -291,6 +380,11 @@ namespace fsm {
                 goal_sub_ = nh_.subscribe(cfg_.click_goal_topic, 1, &FsmRos1::goalCallback, this);
                 cout << YELLOW << " -- [Fsm] CLICKGOAL ENABLE." << RESET << endl;
                 cmd_cnt++;
+            }
+
+            if (!cfg_.goal_yaw_topic.empty()) {
+                goal_yaw_sub_ = nh_.subscribe(cfg_.goal_yaw_topic, 10, &FsmRos1::yawCallback, this);
+                cout << YELLOW << " -- [Fsm] GOAL YAW ENABLE: " << cfg_.goal_yaw_topic << RESET << endl;
             }
 
             if (cmd_cnt != 1) {
@@ -331,6 +425,7 @@ namespace fsm {
                 return;
             }
             if (machine_state_ != FOLLOW_TRAJ && machine_state_ != EMER_STOP) {
+                publishIdleYawCommand();
                 return;
             }
 
@@ -410,7 +505,23 @@ namespace fsm {
 
         void mainFsmTimerCallback(const ros::TimerEvent &event) {
             callMainFsmOnce();
+            planner_ptr_->updateYawReference();
+            if (planner_ptr_->consumeYawTrajectoryUpdate() &&
+                (machine_state_ == FOLLOW_TRAJ || machine_state_ == EMER_STOP)) {
+                publishPolyTraj();
+            }
             publishFovMarker();
+        }
+
+        void publishIdleYawCommand() {
+            StatePVAJ pvaj;
+            double yaw = 0.0, yaw_dot = 0.0;
+            if (!planner_ptr_->getOneIdleYawCommand(pvaj, yaw, yaw_dot)) {
+                return;
+            }
+            quadrotor_msgs::PositionCommand cmd;
+            fillPositionCommand(cmd, pvaj, yaw, yaw_dot, 0);
+            cmd_pub.publish(cmd);
         }
 
     };

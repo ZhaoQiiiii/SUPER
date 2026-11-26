@@ -23,7 +23,9 @@
 
 #include <super_core/super_planner.h>
 #include <memory>
+#include <cmath>
 #include <super_utils/scope_timer.hpp>
+#include <utils/optimization/polynomial_interpolation.h>
 #include <fmt/color.h>
 
 using namespace super_utils;
@@ -123,7 +125,7 @@ namespace super_planner {
                 ros_ptr_->info(" -- [SUPER] in [PlanFromRest] generateBackupTrajectory SUCCESS.");
             }
 
-            cmd_traj_info_.setTrajectory(exp_traj_info, back_traj_info);
+            commitPositionTrajectory(exp_traj_info, &back_traj_info);
             last_exp_traj_info_ = exp_traj_info;
             robot_on_backup_traj_ = false;
             gi_.new_goal = false;
@@ -142,7 +144,7 @@ namespace super_planner {
                 ros_ptr_->info(" -- [SUPER] in [PlanFromRest] generateBackupTrajectory Finish or NO_NEED.");
             }
             robot_on_backup_traj_ = false;
-            cmd_traj_info_.setTrajectory(exp_traj_info);
+            commitPositionTrajectory(exp_traj_info, nullptr);
             last_exp_traj_info_ = exp_traj_info;
             gi_.new_goal = false;
 
@@ -237,7 +239,7 @@ namespace super_planner {
         }
 
         if (back_ret_code == SUCCESS) {
-            cmd_traj_info_.setTrajectory(exp_traj_info, back_traj_info);
+            commitPositionTrajectory(exp_traj_info, &back_traj_info);
             last_exp_traj_info_ = exp_traj_info;
             robot_on_backup_traj_ = false;
             gi_.new_goal = false;
@@ -273,7 +275,7 @@ namespace super_planner {
             return SUCCESS;
         } else if (back_ret_code == FINISH) {
             // Which means the exp traj is all in known free, no need for backup traj
-            cmd_traj_info_.setTrajectory(exp_traj_info);
+            commitPositionTrajectory(exp_traj_info, nullptr);
             last_exp_traj_info_ = exp_traj_info;
             robot_on_backup_traj_ = false;
             gi_.new_goal = false;
@@ -411,10 +413,11 @@ namespace super_planner {
             replan_process_start_TT = -1;
             replan_state_TT = -1;
         } else {
+            cmd_traj_info_.lock();
             guide_pos_traj = cmd_traj_info_.posTraj(); // last_exp_traj;
             guide_yaw_traj = cmd_traj_info_.yawTraj(); //last_exp_traj_info.exp_yaw_traj;
+            cmd_traj_info_.unlock();
             last_exp_traj = last_exp_traj_info.posTraj();
-
             replan_process_start_TT = replan_process_start_WT - last_exp_traj.start_WT;
             replan_state_TT = replan_process_start_TT + cfg_.replan_forward_dt;
             /* 2.2) Perform collision check on last exp traj*/
@@ -797,9 +800,12 @@ namespace super_planner {
         }
         Trajectory new_traj, old_traj;
 
-        if (!yaw_traj_opt_->optimize(init_yaw, fina_yaw, out_traj, new_traj, 3, false, free_end)) {
-            ros_ptr_->error(" -- [SUPER] in [generateExpTraj]: YawTrajOpt failed, force return");
-            return FAILED;
+        {
+            std::lock_guard<std::mutex> yaw_guard(yaw_traj_mutex_);
+            if (!yaw_traj_opt_->optimize(init_yaw, fina_yaw, out_traj, new_traj, 3, false, free_end)) {
+                ros_ptr_->error(" -- [SUPER] in [generateExpTraj]: YawTrajOpt failed, force return");
+                return FAILED;
+            }
         }
         if (!last_exp_traj_info.empty()) {
             if (!guide_yaw_traj.getPartialTrajectoryByTime(replan_process_start_TT, replan_state_TT,
@@ -1050,10 +1056,13 @@ namespace super_planner {
                 }
             }
             Trajectory temp_yaw_traj;
-            if (!yaw_traj_opt_->optimize(yaw_init_vec, yaw_goal, temp_pos_traj,
-                                         temp_yaw_traj, 3, false, free_end)) {
-                ros_ptr_->error(" -- [SUPER] in [generateBackupTrajectory] YawTrajOpt FAILD.");
-                return OPT_FAILED;
+            {
+                std::lock_guard<std::mutex> yaw_guard(yaw_traj_mutex_);
+                if (!yaw_traj_opt_->optimize(yaw_init_vec, yaw_goal, temp_pos_traj,
+                                             temp_yaw_traj, 3, false, free_end)) {
+                    ros_ptr_->error(" -- [SUPER] in [generateBackupTrajectory] YawTrajOpt FAILD.");
+                    return OPT_FAILED;
+                }
             }
 
 
@@ -1201,7 +1210,491 @@ namespace super_planner {
     }
 
 
+    void SuperPlanner::setYawReference(const double &yaw, const double &receipt_WT) {
+        std::lock_guard<std::mutex> guard(yaw_ref_mutex_);
+        yaw_ref_target_ = yaw;
+        yaw_ref_receipt_WT_ = receipt_WT;
+        yaw_ref_received_ = true;
+        ++yaw_ref_seq_;
+    }
+
+    void SuperPlanner::setYawReferenceTimeout(const double &timeout_s) {
+        std::lock_guard<std::mutex> guard(yaw_ref_mutex_);
+        yaw_reference_timeout_s_ = std::max(0.01, timeout_s);
+    }
+
+    bool SuperPlanner::consumeYawTrajectoryUpdate() {
+        std::lock_guard<std::mutex> guard(yaw_state_mutex_);
+        const bool updated = yaw_traj_updated_;
+        yaw_traj_updated_ = false;
+        return updated;
+    }
+
+    void SuperPlanner::updateYawReference() {
+        std::lock_guard<std::mutex> update_guard(yaw_state_mutex_);
+
+        const double now = ros_ptr_->getSimTime();
+        if (now <= 0.0) {
+            return;
+        }
+
+        bool valid_reference = false;
+        double target_yaw = 0.0;
+        uint64_t ref_seq = 0;
+        {
+            std::lock_guard<std::mutex> guard(yaw_ref_mutex_);
+            if (yaw_ref_received_) {
+                valid_reference = (now - yaw_ref_receipt_WT_) <= yaw_reference_timeout_s_;
+                target_yaw = yaw_ref_target_;
+                ref_seq = yaw_ref_seq_;
+            }
+        }
+
+        if (cmd_traj_info_.empty()) {
+            updateIdleYawReference(valid_reference, target_yaw, ref_seq, now);
+            return;
+        }
+
+        /* Leaving the idle phase: the committed trajectory takes over. */
+        idle_yaw_active_ = false;
+        idle_yaw_settling_ = false;
+
+        const uint64_t pos_version = cmd_traj_info_.getPositionVersion();
+        if (!valid_reference) {
+            if (yaw_timeout_applied_ && pos_version != yaw_applied_pos_version_) {
+                /* The replan already committed a default yaw trajectory. */
+                yaw_applied_pos_version_ = pos_version;
+            }
+            if (yaw_timeout_applied_ || pos_version == yaw_applied_pos_version_) {
+                return;
+            }
+        } else if (ref_seq == yaw_ref_applied_seq_ && pos_version == yaw_applied_pos_version_) {
+            return;
+        }
+
+        Trajectory pos_traj, committed_yaw;
+        uint64_t version = 0;
+        double start_WT = 0.0;
+        if (!cmd_traj_info_.snapshotCommitted(pos_traj, committed_yaw, version, start_WT)) {
+            return;
+        }
+        if (version != pos_version) {
+            return;  // position trajectory moved under us; retry on the next tick
+        }
+
+        const double pos_total = pos_traj.getTotalDuration();
+        const double yaw_total = committed_yaw.empty() ? 0.0 : committed_yaw.getTotalDuration();
+        const double elapsed = now - start_WT;
+        if (elapsed < 0.0) {
+            return;
+        }
+
+        Vec4f init_state = Vec4f::Zero();
+        Trajectory prefix;
+        if (yaw_total > 2e-4 && elapsed <= yaw_total + 1e-4) {
+            const double cut = std::min(elapsed, yaw_total - 1e-4);
+            if (cut > 1e-4) {
+                if (!committed_yaw.getPartialTrajectoryByTime(0.0, cut, prefix)) {
+                    return;
+                }
+                StatePVAJ yaw_state;
+                if (!committed_yaw.getState(cut, yaw_state)) {
+                    return;
+                }
+                init_state = yaw_state.row(0);
+            } else {
+                StatePVAJ yaw_state;
+                if (committed_yaw.getState(0.0, yaw_state)) {
+                    init_state = yaw_state.row(0);
+                }
+            }
+        } else if (!committed_yaw.empty()) {
+            /* The committed yaw trajectory already ended: the vehicle has been
+             * holding its last yaw.  Extend that hold up to now, then splice the
+             * new segment so the yaw command never expires while idle. */
+            if (!committed_yaw.getPartialTrajectoryByTime(0.0, yaw_total, prefix)) {
+                return;
+            }
+            StatePVAJ end_state;
+            if (!committed_yaw.getState(yaw_total, end_state)) {
+                return;
+            }
+            init_state = end_state.row(0);
+            init_state(1) = 0.0;
+            init_state(2) = 0.0;
+            const double gap = elapsed - yaw_total;
+            if (gap > 1e-4) {
+                Trajectory hold;
+                if (!buildYawHoldSegment(init_state(0), gap, hold)) {
+                    return;
+                }
+                prefix = prefix + hold;
+            }
+        }
+
+        const double remaining_position = std::max(0.0, pos_total - elapsed);
+        Trajectory segment;
+        if (valid_reference) {
+            if (!buildYawTargetSegment(init_state, target_yaw, remaining_position, segment)) {
+                ros_ptr_->warn(
+                        " -- [SUPER] yaw reference update rejected: cannot satisfy yaw rate limit.");
+                return;
+            }
+        } else {
+            bool built = false;
+            if (remaining_position > 1e-3) {
+                const double pos_now = std::min(elapsed, pos_total);
+                Trajectory pos_remaining;
+                if (pos_traj.getPartialTrajectoryByTime(pos_now, pos_total, pos_remaining)) {
+                    built = buildDefaultYawSegment(init_state, pos_remaining, segment);
+                }
+            }
+            if (!built && !buildYawTargetSegment(init_state, init_state(0), 0.0, segment)) {
+                return;
+            }
+        }
+
+        if (!commitYawTrajectory(prefix, segment, start_WT, pos_total, version)) {
+            return;
+        }
+        yaw_applied_pos_version_ = version;
+        if (valid_reference) {
+            yaw_ref_applied_seq_ = ref_seq;
+            yaw_timeout_applied_ = false;
+        } else {
+            yaw_timeout_applied_ = true;
+        }
+    }
+
+    bool SuperPlanner::buildYawTargetSegment(const Vec4f &init_state,
+                                             const double &target_yaw,
+                                             const double &min_duration,
+                                             Trajectory &out_traj) {
+        const double rate_max = std::max(0.05, cfg_.yaw_dot_max);
+        const double target = init_state(0) +
+                              std::remainder(target_yaw - init_state(0), 2.0 * M_PI);
+        const double delta = std::abs(target - init_state(0));
+        double duration = std::max(0.2, 1.9 * delta / rate_max);
+        if (std::abs(init_state(1)) > rate_max) {
+            duration = std::max(duration, 2.0 * std::abs(init_state(1)) / rate_max);
+        }
+
+        VecDf times(1);
+        for (int attempt = 0; attempt < 12; ++attempt) {
+            times(0) = duration;
+            Eigen::Matrix<double, 1, 3> init3;
+            init3 << init_state(0), init_state(1), init_state(2);
+            Eigen::Matrix<double, 1, 3> goal3;
+            goal3 << target, 0.0, 0.0;
+            Eigen::Matrix<double, 1, Eigen::Dynamic> way_pts(1, 0);
+            Trajectory turn = geometry_utils::poly_interpo::minimumJerkInterpolation<1>(
+                    init3, goal3, way_pts, times);
+            if (turn.empty()) {
+                return false;
+            }
+
+            /* YawTrajOpt (minimumAcc) emits degree-7 pieces (8 columns); pad the
+             * minimum-jerk result to the same order so every committed yaw piece
+             * shares one order_yaw and serializes into one PolynomialTrajectory. */
+            Trajectory turn_deg7;
+            turn_deg7.reserve(turn.getPieceNum());
+            for (int i = 0; i < turn.getPieceNum(); ++i) {
+                const Eigen::MatrixXd &coeff = turn[i].getCoeffMat();
+                if (coeff.cols() > 8) {
+                    return false;
+                }
+                Eigen::MatrixXd padded = Eigen::MatrixXd::Zero(3, 8);
+                padded.block(0, 8 - coeff.cols(), 3, coeff.cols()) = coeff;
+                turn_deg7.emplace_back(turn[i].getDuration(), padded);
+            }
+            turn = turn_deg7;
+
+            if (turn.getMaxVelRate() <= rate_max + 1e-6) {
+                out_traj = turn;
+                if (min_duration > duration + 1e-6) {
+                    Trajectory hold;
+                    if (!buildYawHoldSegment(target, min_duration - duration, hold)) {
+                        return false;
+                    }
+                    out_traj = out_traj + hold;
+                }
+                return true;
+            }
+            duration *= 1.3;
+        }
+        return false;
+    }
+
+    bool SuperPlanner::buildDefaultYawSegment(const Vec4f &init_state,
+                                              const Trajectory &pos_remaining,
+                                              Trajectory &out_traj) {
+        if (pos_remaining.empty() || pos_remaining.getTotalDuration() <= 1e-6) {
+            return false;
+        }
+        Vec4f goal_yaw = Vec4f::Zero();
+        std::lock_guard<std::mutex> guard(yaw_traj_mutex_);
+        if (!yaw_traj_opt_->optimize(init_state, goal_yaw, pos_remaining, out_traj, 3, false, true)) {
+            return false;
+        }
+        return !out_traj.empty();
+    }
+
+    bool SuperPlanner::buildYawHoldSegment(const double &yaw,
+                                           const double &duration,
+                                           Trajectory &out_traj) {
+        out_traj.clear();
+        if (duration <= 1e-6) {
+            return true;
+        }
+        Eigen::MatrixXd coeff = Eigen::MatrixXd::Zero(3, 8);
+        coeff(0, 7) = yaw;
+        out_traj.emplace_back(duration, coeff);
+        return true;
+    }
+
+    bool SuperPlanner::commitYawTrajectory(const Trajectory &prefix,
+                                           const Trajectory &segment,
+                                           const double &start_WT,
+                                           const double &pos_total,
+                                           const uint64_t &pos_version) {
+        if (segment.empty()) {
+            return false;
+        }
+        Trajectory merged;
+        if (!prefix.empty()) {
+            merged = prefix + segment;
+        } else {
+            merged = segment;
+        }
+        merged.start_WT = start_WT;
+
+        const double duration = merged.getTotalDuration();
+        if (duration + 1e-6 < pos_total) {
+            StatePVAJ end_state;
+            if (!merged.getState(duration, end_state)) {
+                return false;
+            }
+            Trajectory hold;
+            if (!buildYawHoldSegment(end_state(0, 0), pos_total - duration, hold)) {
+                return false;
+            }
+            merged = merged + hold;
+            merged.start_WT = start_WT;
+        }
+
+        /* Only the freshly built segment is rate-checked: the prefix is the
+         * already committed trajectory and cannot be changed retroactively.
+         * The +2.0 rad/s tolerance matches YawTrajOpt's own acceptance rule. */
+        const double max_rate = segment.getMaxVelRate();
+        if (max_rate > cfg_.yaw_dot_max + 2.0 + 1e-3) {
+            ros_ptr_->warn(" -- [SUPER] yaw trajectory rejected: segment rate {} > {}",
+                           max_rate, cfg_.yaw_dot_max + 2.0);
+            return false;
+        }
+        if (!cmd_traj_info_.setYawTrajectory(merged, pos_version)) {
+            return false;
+        }
+        yaw_traj_updated_ = true;
+        return true;
+    }
+
+    Vec4f SuperPlanner::committedYawStateAt(const double &wall_time) {
+        Trajectory pos_traj, yaw_traj;
+        uint64_t version = 0;
+        double start_WT = 0.0;
+        if (cmd_traj_info_.snapshotCommitted(pos_traj, yaw_traj, version, start_WT) &&
+            !yaw_traj.empty()) {
+            double t = wall_time - start_WT;
+            if (t < 0.0) {
+                t = 0.0;
+            }
+            StatePVAJ state;
+            if (yaw_traj.getState(t, state)) {
+                return state.row(0);
+            }
+        }
+        Vec4f init_state = Vec4f::Zero();
+        {
+            std::lock_guard<std::mutex> state_guard(drone_state_mutex_);
+            init_state << robot_state_.yaw, 0.0, 0.0, 0.0;
+        }
+        return init_state;
+    }
+
+    bool SuperPlanner::yawReferenceActive(double &target_yaw, uint64_t &ref_seq) {
+        const double now = ros_ptr_->getSimTime();
+        std::lock_guard<std::mutex> guard(yaw_ref_mutex_);
+        if (!yaw_ref_received_ || (now - yaw_ref_receipt_WT_) > yaw_reference_timeout_s_) {
+            return false;
+        }
+        target_yaw = yaw_ref_target_;
+        ref_seq = yaw_ref_seq_;
+        return true;
+    }
+
+    void SuperPlanner::applyActiveYawReference(const Vec4f &init_state) {
+        std::lock_guard<std::mutex> guard(yaw_state_mutex_);
+
+        double target_yaw = 0.0;
+        uint64_t ref_seq = 0;
+        if (!yawReferenceActive(target_yaw, ref_seq)) {
+            yaw_applied_pos_version_ = cmd_traj_info_.getPositionVersion();
+            return;
+        }
+
+        Trajectory pos_traj, committed_yaw;
+        uint64_t version = 0;
+        double start_WT = 0.0;
+        if (!cmd_traj_info_.snapshotCommitted(pos_traj, committed_yaw, version, start_WT)) {
+            return;
+        }
+        const double pos_total = pos_traj.getTotalDuration();
+        Trajectory segment;
+        if (!buildYawTargetSegment(init_state, target_yaw, pos_total, segment)) {
+            ros_ptr_->warn(" -- [SUPER] yaw reference reapply failed: yaw rate limit.");
+            return;
+        }
+        if (!commitYawTrajectory(Trajectory(), segment, start_WT, pos_total, version)) {
+            return;
+        }
+        yaw_applied_pos_version_ = version;
+        yaw_ref_applied_seq_ = ref_seq;
+        yaw_timeout_applied_ = false;
+    }
+
+    void SuperPlanner::commitPositionTrajectory(const ExpTraj &exp_traj,
+                                                const BackupTraj *backup_traj) {
+        const double new_start_WT = exp_traj.getStartWallTime();
+        const Vec4f carried_yaw_state = committedYawStateAt(new_start_WT);
+        bool committed = false;
+        if (backup_traj != nullptr) {
+            committed = cmd_traj_info_.setTrajectory(exp_traj, *backup_traj);
+        } else {
+            cmd_traj_info_.setTrajectory(exp_traj);
+            committed = true;
+        }
+        if (committed) {
+            applyActiveYawReference(carried_yaw_state);
+        }
+    }
+
+    void SuperPlanner::updateIdleYawReference(const bool &valid_reference,
+                                              const double &target_yaw,
+                                              const uint64_t &ref_seq,
+                                              const double &now) {
+        if (valid_reference) {
+            if (idle_yaw_active_ && ref_seq == yaw_ref_applied_seq_) {
+                idle_yaw_settling_ = false;
+                return;
+            }
+            Vec4f init_state = Vec4f::Zero();
+            if (idle_yaw_active_ && !idle_yaw_traj_.empty()) {
+                StatePVAJ yaw_state;
+                if (idle_yaw_traj_.getState(now - idle_yaw_traj_.start_WT, yaw_state)) {
+                    init_state = yaw_state.row(0);
+                }
+            } else {
+                init_state << robot_state_.yaw, 0.0, 0.0, 0.0;
+            }
+            Trajectory segment;
+            if (!buildYawTargetSegment(init_state, target_yaw, 0.0, segment)) {
+                return;
+            }
+            segment.start_WT = now;
+            idle_yaw_traj_ = segment;
+            idle_yaw_active_ = true;
+            idle_yaw_settling_ = false;
+            yaw_ref_applied_seq_ = ref_seq;
+            yaw_timeout_applied_ = false;
+            return;
+        }
+
+        if (!idle_yaw_active_) {
+            return;
+        }
+        if (!yaw_timeout_applied_) {
+            Vec4f init_state = Vec4f::Zero();
+            StatePVAJ yaw_state;
+            if (idle_yaw_traj_.getState(now - idle_yaw_traj_.start_WT, yaw_state)) {
+                init_state = yaw_state.row(0);
+            } else {
+                init_state << robot_state_.yaw, 0.0, 0.0, 0.0;
+            }
+            Trajectory segment;
+            if (buildYawTargetSegment(init_state, init_state(0), 0.0, segment)) {
+                segment.start_WT = now;
+                idle_yaw_traj_ = segment;
+                idle_yaw_settling_ = true;
+            } else {
+                idle_yaw_active_ = false;
+                idle_yaw_settling_ = false;
+            }
+            yaw_timeout_applied_ = true;
+            return;
+        }
+        if (idle_yaw_settling_ &&
+            now - idle_yaw_traj_.start_WT > idle_yaw_traj_.getTotalDuration()) {
+            idle_yaw_active_ = false;
+            idle_yaw_settling_ = false;
+        }
+    }
+
+    bool SuperPlanner::getOneIdleYawCommand(StatePVAJ &pvaj, double &yaw, double &yaw_dot) {
+        std::lock_guard<std::mutex> guard(yaw_state_mutex_);
+
+        const double now = ros_ptr_->getSimTime();
+        if (now <= 0.0) {
+            return false;
+        }
+
+        Vec3f current_position;
+        {
+            std::lock_guard<std::mutex> state_guard(drone_state_mutex_);
+            if (!robot_state_.rcv) {
+                return false;  // never command a hold before the first odom
+            }
+            current_position = robot_state_.p;
+        }
+        pvaj.setZero();
+        pvaj.col(0) = current_position;
+
+        StatePVAJ yaw_state;
+        if (!cmd_traj_info_.empty() &&
+            cmd_traj_info_.getYawStateAtWallTime(now, yaw_state)) {
+            yaw = yaw_state(0, 0);
+            yaw_dot = yaw_state(0, 1);
+            return true;
+        }
+
+        /* The committed yaw trajectory has expired: keep streaming a hold at
+         * the last heading so idle controllers do not lose their command. */
+        if (!cmd_traj_info_.empty() &&
+            cmd_traj_info_.getLastYawState(yaw_state)) {
+            yaw = yaw_state(0, 0);
+            yaw_dot = 0.0;
+            return true;
+        }
+
+        if (!idle_yaw_active_ || idle_yaw_traj_.empty()) {
+            return false;
+        }
+        const double t = now - idle_yaw_traj_.start_WT;
+        if (idle_yaw_settling_ && t > idle_yaw_traj_.getTotalDuration()) {
+            idle_yaw_active_ = false;
+            idle_yaw_settling_ = false;
+            return false;
+        }
+        if (!idle_yaw_traj_.getState(t, yaw_state)) {
+            return false;
+        }
+        yaw = yaw_state(0, 0);
+        yaw_dot = yaw_state(0, 1);
+        return true;
+    }
+
+
     void SuperPlanner::getRobotState(rog_map::RobotState &out) {
+        std::lock_guard<std::mutex> guard(drone_state_mutex_);
         robot_state_ = map_ptr_->getRobotState();
         out = robot_state_;
     }
