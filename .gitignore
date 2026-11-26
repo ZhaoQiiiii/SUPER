@@ -5,6 +5,7 @@
 **/.idea
 **.bag
 **/.catkin_workspace
+**/.catkin_tools
 **.csv
 **.bin
 **.zip

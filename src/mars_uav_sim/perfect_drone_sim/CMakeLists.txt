@@ -22,6 +22,9 @@ find_package(catkin REQUIRED COMPONENTS
 find_package(Eigen3 REQUIRED)
 find_package(PCL REQUIRED)
 find_package(OpenCV REQUIRED)
+# yaml_loader.hpp 直接用 YAML::LoadFile 等符号；现代链接器不会从 libmarsim_render.so
+# 的间接依赖里解析它们，必须显式链接 yaml-cpp。
+find_package(yaml-cpp REQUIRED)
 catkin_package(
         INCLUDE_DIRS include
         LIBRARIES
@@ -41,6 +44,7 @@ include_directories(
 set(THIRD_PARTY
         ${catkin_LIBRARIES}
         ${PCL_LIBRARIES}
+        yaml-cpp
 #        -ldw
         )
 

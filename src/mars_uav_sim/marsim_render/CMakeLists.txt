@@ -27,6 +27,8 @@ endif()
 add_definitions(-DROOT_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/\")
 
 # Find required packages
+# catkin 必须显式 find（catkin_tools 下不会从工作区顶层继承宏），否则 catkin_package 未定义
+find_package(catkin REQUIRED COMPONENTS roscpp)
 find_package(Eigen3 REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(GLEW REQUIRED)
