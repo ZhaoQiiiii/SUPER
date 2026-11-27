@@ -1,19 +1,3 @@
-# Dockerfile — SUPER 独立运行环境（Ubuntu 20.04 + ROS Noetic + MAVROS）。
-#
-# 只包含规划链路（super_planner / rog_map / mission_planner / quadrotor_msgs）
-# 的构建与运行依赖，不依赖其他镜像；代码通过挂载使用。
-#
-# 未安装仿真/可视化包（rviz_plugins、marsim_render、perfect_drone_sim）所需的
-# Qt/GL/GLFW/GLEW/OpenCV，构建时需跳过它们：
-#   cd /workspace/SUPER && catkin_make -DBUILD_TYPE=Release \
-#     -DCATKIN_BLACKLIST_PACKAGES="rviz_plugins;marsim_render;perfect_drone_sim"
-#
-# 构建（上下文是本 docker/ 目录）：
-#   docker build -t super:noetic runtime/Robots/quadrotors/src/SUPER/docker
-#
-# 运行示例：
-#   docker run --rm -it --network host \
-#     -v <path-to-SUPER>:/workspace/SUPER super:noetic
 FROM ubuntu:20.04
 
 LABEL maintainer="iinnoovo123@gmail.com"
