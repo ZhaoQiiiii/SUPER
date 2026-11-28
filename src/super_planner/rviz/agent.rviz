@@ -350,8 +350,7 @@ Visualization Manager:
               Marker Topic: /super/planner/vis/goal
               Name: goal
               Namespaces:
-                goal: true
-                goal_line: true
+                {}
               Queue Size: 100
               Value: true
             - Class: rviz/MarkerArray
@@ -383,9 +382,7 @@ Visualization Manager:
               Marker Topic: /super/planner/vis/committed_traj
               Name: committed_traj
               Namespaces:
-                committed_backup: true
-                committed_exp: true
-                committed_exp_waypoints: true
+                {}
               Queue Size: 100
               Value: true
             - Class: rviz/MarkerArray
@@ -393,7 +390,7 @@ Visualization Manager:
               Marker Topic: /super/planner/vis/yaw_traj
               Name: yaw_traj
               Namespaces:
-                yaw_traj: true
+                {}
               Queue Size: 100
               Value: true
             - Alpha: 1
@@ -498,7 +495,7 @@ Visualization Manager:
               Marker Topic: /super/sim/vis/traj_with_vel
               Name: traj_with_vel
               Namespaces:
-                trajectory: true
+                {}
               Queue Size: 100
               Value: true
             - Class: rviz/Marker
@@ -530,7 +527,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/XYOrbit
-      Distance: 27.78278160095215
+      Distance: 34.8507194519043
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -538,9 +535,9 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: -2.7736358642578125
-        Y: -7.762129306793213
-        Z: 2.4437904357910156e-06
+        X: -4.330659866333008
+        Y: -9.258977890014648
+        Z: -3.2782554626464844e-06
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
